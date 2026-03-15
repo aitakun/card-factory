@@ -1,5 +1,3 @@
-#!/home/nitaku/repos/test-onlyoffice/.venv/bin/python
-
 import requests
 import json
 import os
