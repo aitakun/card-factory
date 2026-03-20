@@ -95,6 +95,14 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
             if prefix and value:
                 value = prefix + value
             
+            # Apply text transformation if specified
+            transform = binding.get("transform")
+            if transform and value:
+                if transform == "uppercase":
+                    value = value.upper()
+                elif transform == "lowercase":
+                    value = value.lower()
+            
             # Handle text elements
             tag = element.tag.split("}")[-1]  # Get local name without namespace
             

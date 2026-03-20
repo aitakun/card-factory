@@ -17,8 +17,8 @@ class CardBindingEngine:
         
         # Default bindings for hardware cards (matching the actual spreadsheet columns)
         self.default_bindings = [
-            {"element_id": "name", "source_column": "name"},
-            {"element_id": "type", "source_column": "type"},
+            {"element_id": "name", "source_column": "name", "transform": "uppercase"},
+            {"element_id": "type", "source_column": "type", "transform": "uppercase"},
             {"element_id": "subtypes", "source_column": "subtypes", "prefix": " - "},
             {"element_id": "cost", "source_column": "cost"},
             {"element_id": "text-body", "source_column": "text"},
