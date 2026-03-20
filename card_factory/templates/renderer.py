@@ -31,6 +31,9 @@ def set_element_text_content(element: etree.Element, new_text: str) -> None:
 def substitute_text_in_tspan(element: etree.Element, new_text: str) -> None:
     """Substitute text in tspan elements (common in Inkscape SVGs)"""
     for tspan in element.findall(".//{http://www.w3.org/2000/svg}tspan"):
+        # Clear all nested tspans and set text
+        for child in list(tspan):
+            tspan.remove(child)
         tspan.text = new_text
         return  # Only modify the first tspan
 
@@ -56,10 +59,16 @@ def render_template(tree: etree.ElementTree, bindings: Dict[str, str], row_data:
             # For Inkscape text elements, modify the first tspan
             tspan = element.find(".//{http://www.w3.org/2000/svg}tspan")
             if tspan is not None:
+                # Clear all nested tspans inside this tspan before setting text
+                for child in list(tspan):
+                    tspan.remove(child)
                 tspan.text = value
             else:
                 element.text = value
         elif tag == "tspan":
+            # Clear all nested tspans before setting text
+            for child in list(element):
+                element.remove(child)
             element.text = value
         else:
             # For other elements, just set text content
