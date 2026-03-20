@@ -19,7 +19,7 @@ class CardBindingEngine:
         self.default_bindings = [
             {"element_id": "name", "source_column": "name"},
             {"element_id": "type", "source_column": "type"},
-            {"element_id": "subtypes", "source_column": "subtypes"},
+            {"element_id": "subtypes", "source_column": "subtypes", "prefix": " - "},
             {"element_id": "cost", "source_column": "cost"},
             {"element_id": "text-body", "source_column": "text"},
             {"element_id": "copyright", "source_column": "illustrator"}

@@ -90,6 +90,11 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
             else:
                 value = str(raw_value).strip()
             
+            # Apply prefix if specified and value is not empty
+            prefix = binding.get("prefix")
+            if prefix and value:
+                value = prefix + value
+            
             # Handle text elements
             tag = element.tag.split("}")[-1]  # Get local name without namespace
             
