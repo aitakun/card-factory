@@ -56,15 +56,14 @@ def render_template(tree: etree.ElementTree, bindings: Dict[str, str], row_data:
         tag = element.tag.split("}")[-1]  # Get local name without namespace
         
         if tag == "text":
-            # For Inkscape text elements, modify the first tspan
-            tspan = element.find(".//{http://www.w3.org/2000/svg}tspan")
-            if tspan is not None:
-                # Clear all nested tspans inside this tspan before setting text
-                for child in list(tspan):
-                    tspan.remove(child)
-                tspan.text = value
-            else:
-                element.text = value
+            # Clear ALL children (tspans) from the text element
+            for child in list(element):
+                element.remove(child)
+            # Clear any text content in the text element itself
+            element.text = None
+            # Create a new tspan with the value
+            tspan = etree.SubElement(element, "{http://www.w3.org/2000/svg}tspan")
+            tspan.text = value
         elif tag == "tspan":
             # Clear all nested tspans before setting text
             for child in list(element):
