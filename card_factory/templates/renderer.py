@@ -56,14 +56,20 @@ def render_template(tree: etree.ElementTree, bindings: Dict[str, str], row_data:
         tag = element.tag.split("}")[-1]  # Get local name without namespace
         
         if tag == "text":
-            # Clear ALL children (tspans) from the text element
-            for child in list(element):
-                element.remove(child)
-            # Clear any text content in the text element itself
-            element.text = None
-            # Create a new tspan with the value
-            tspan = etree.SubElement(element, "{http://www.w3.org/2000/svg}tspan")
-            tspan.text = value
+            # Find first direct tspan child
+            tspan = element.find("{http://www.w3.org/2000/svg}tspan")
+            if tspan is not None:
+                # Clear nested children of tspan (keep tspan element with attributes)
+                for child in list(tspan):
+                    tspan.remove(child)
+                # Set the tspan's text
+                tspan.text = value
+                # Remove any other tspan siblings
+                for child in list(element):
+                    if child is not tspan and child.tag.endswith('}tspan'):
+                        element.remove(child)
+            else:
+                element.text = value
         elif tag == "tspan":
             # Clear all nested tspans before setting text
             for child in list(element):
