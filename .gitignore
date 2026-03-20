@@ -1,2 +1,5 @@
 .venv
 .env
+export/
+__pycache__/
+*.pyc
