@@ -39,8 +39,8 @@ def render_template(tree: etree.ElementTree, bindings: Dict[str, str], row_data:
     """Substitute values from row_data into template elements based on bindings"""
     
     for element_id, source_column in bindings.items():
-        # Get value from spreadsheet
-        value = str(row_data.get(source_column, ""))
+        # Get value from spreadsheet and strip whitespace
+        value = str(row_data.get(source_column, "")).strip()
         
         # Find element in template
         element = tree.find(f".//*[@id='{element_id}']")
