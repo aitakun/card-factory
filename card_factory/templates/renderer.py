@@ -78,13 +78,14 @@ def render_template(tree: etree.ElementTree, bindings: Dict[str, str], row_data:
 
 
 def save_svg(tree: etree.ElementTree, output_path: str) -> None:
-    """Save SVG tree to file"""
+    """Save SVG tree to file without pretty printing"""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     
+    # Write without pretty printing
     tree.write(
         str(path),
         xml_declaration=True,
         encoding="UTF-8",
-        pretty_print=True
+        pretty_print=False
     )
