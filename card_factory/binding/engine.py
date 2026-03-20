@@ -1,6 +1,6 @@
 """Data binding engine for card generation"""
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from pathlib import Path
 import re
 
@@ -16,13 +16,17 @@ class CardBindingEngine:
         self.export_dir.mkdir(parents=True, exist_ok=True)
         
         # Default bindings for hardware cards (matching the actual spreadsheet columns)
-        self.default_bindings = {
-            "name": "name",
-            "type-line": "type",
-            "cost": "cost",
-            "text-body": "text",
-            "copyright": "illustrator"
-        }
+        # Configuration for split binding:
+        # - split_by: symbol to split on (e.g., " - ")
+        # - part_index: 0 = first part (before split), 1 = second part (after split)
+        self.default_bindings = [
+            {"element_id": "name", "source_column": "name"},
+            {"element_id": "type", "source_column": "type", "split_by": " - ", "part_index": 0},
+            {"element_id": "subtypes", "source_column": "type", "split_by": " - ", "part_index": 1},
+            {"element_id": "cost", "source_column": "cost"},
+            {"element_id": "text-body", "source_column": "text"},
+            {"element_id": "copyright", "source_column": "illustrator"}
+        ]
     
     def sanitize_filename(self, text: str) -> str:
         """Create safe filename from card name"""

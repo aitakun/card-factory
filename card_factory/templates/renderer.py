@@ -1,6 +1,6 @@
 """SVG Template rendering and value substitution"""
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from lxml import etree
 from pathlib import Path
 
@@ -38,46 +38,84 @@ def substitute_text_in_tspan(element: etree.Element, new_text: str) -> None:
         return  # Only modify the first tspan
 
 
-def render_template(tree: etree.ElementTree, bindings: Dict[str, str], row_data: Dict[str, Any]) -> etree.ElementTree:
+def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any]) -> etree.ElementTree:
     """Substitute values from row_data into template elements based on bindings"""
     
-    for element_id, source_column in bindings.items():
-        # Get value from spreadsheet and strip whitespace
-        value = str(row_data.get(source_column, "")).strip()
+    # Group bindings by source_column for split handling
+    bindings_by_column = {}
+    for binding in bindings:
+        source_column = binding.get("source_column")
+        if source_column not in bindings_by_column:
+            bindings_by_column[source_column] = []
+        bindings_by_column[source_column].append(binding)
+    
+    # Process each source column once
+    for source_column, column_bindings in bindings_by_column.items():
+        raw_value = row_data.get(source_column, "")
+        parts = []
         
-        # Find element in template
-        element = tree.find(f".//*[@id='{element_id}']")
+        # Check if any binding for this column needs splitting
+        split_by = None
+        for binding in column_bindings:
+            if "split_by" in binding:
+                split_by = binding["split_by"]
+                break
         
-        if element is None:
-            print(f"Warning: Element '{element_id}' not found in template")
-            continue
+        if split_by:
+            # Split the value
+            parts = raw_value.split(split_by)
         
-        # Handle text elements
-        tag = element.tag.split("}")[-1]  # Get local name without namespace
-        
-        if tag == "text":
-            # Find first direct tspan child
-            tspan = element.find("{http://www.w3.org/2000/svg}tspan")
-            if tspan is not None:
-                # Clear nested children of tspan (keep tspan element with attributes)
-                for child in list(tspan):
-                    tspan.remove(child)
-                # Set the tspan's text
-                tspan.text = value
-                # Remove any other tspan siblings
-                for child in list(element):
-                    if child is not tspan and child.tag.endswith('}tspan'):
-                        element.remove(child)
+        # Process each binding for this column
+        for binding in column_bindings:
+            element_id = binding["element_id"]
+            split_by = binding.get("split_by")
+            part_index = binding.get("part_index", 0)
+            
+            # Find element in template
+            element = tree.find(f".//*[@id='{element_id}']")
+            
+            if element is None:
+                print(f"Warning: Element '{element_id}' not found in template")
+                continue
+            
+            # Determine the value to use
+            if split_by:
+                if part_index < len(parts):
+                    value = parts[part_index]
+                    # First part: trim spaces, others: keep as is
+                    if part_index == 0:
+                        value = value.strip()
+                else:
+                    value = ""
             else:
-                element.text = value
-        elif tag == "tspan":
-            # Clear all nested tspans before setting text
-            for child in list(element):
-                element.remove(child)
-            element.text = value
-        else:
-            # For other elements, just set text content
-            set_element_text_content(element, value)
+                value = str(raw_value).strip()
+            
+            # Handle text elements
+            tag = element.tag.split("}")[-1]  # Get local name without namespace
+            
+            if tag == "text":
+                # Find first direct tspan child
+                tspan = element.find("{http://www.w3.org/2000/svg}tspan")
+                if tspan is not None:
+                    # Clear nested children of tspan (keep tspan element with attributes)
+                    for child in list(tspan):
+                        tspan.remove(child)
+                    # Set the tspan's text (or leave empty)
+                    tspan.text = value if value else None
+                    # Remove any other tspan siblings
+                    for child in list(element):
+                        if child is not tspan and child.tag.endswith('}tspan'):
+                            element.remove(child)
+                else:
+                    element.text = value if value else None
+            elif tag == "tspan":
+                # Clear all nested tspans before setting text
+                for child in list(element):
+                    element.remove(child)
+                element.text = value if value else None
+            else:
+                # For other elements, just set text content
+                set_element_text_content(element, value if value else "")
     
     return tree
 
