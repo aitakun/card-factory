@@ -42,12 +42,10 @@ def resolve_inline_patterns(tree: etree.ElementTree, bindings: List[Dict[str, An
                     print(f"Warning: No binding found for ${{{binding_id}}} in attribute '{attr_name}'")
                     continue
                 
-                # Resolve the value
                 resolved = resolve_binding_value(binding, row_data)
-                if resolved:
-                    # Replace the pattern with the resolved value
-                    new_value = INLINE_PATTERN_RE.sub(resolved, attr_value, count=1)
-                    element.set(attr_name, new_value)
+                # Always substitute, even if empty string
+                new_value = INLINE_PATTERN_RE.sub(resolved, attr_value, count=1)
+                element.set(attr_name, new_value)
         
         # Check element text content
         if element.text:
@@ -59,10 +57,9 @@ def resolve_inline_patterns(tree: etree.ElementTree, bindings: List[Dict[str, An
                     print(f"Warning: No binding found for ${{{binding_id}}} in text content")
                     continue
                 
-                # Resolve the value
                 resolved = resolve_binding_value(binding, row_data)
-                if resolved:
-                    element.text = INLINE_PATTERN_RE.sub(resolved, element.text, count=1)
+                # Always substitute, even if empty string
+                element.text = INLINE_PATTERN_RE.sub(resolved, element.text, count=1)
         
         # Check element tail (text following child elements)
         for child in element:
@@ -76,8 +73,8 @@ def resolve_inline_patterns(tree: etree.ElementTree, bindings: List[Dict[str, An
                         continue
                     
                     resolved = resolve_binding_value(binding, row_data)
-                    if resolved:
-                        child.tail = INLINE_PATTERN_RE.sub(resolved, child.tail, count=1)
+                    # Always substitute, even if empty string
+                    child.tail = INLINE_PATTERN_RE.sub(resolved, child.tail, count=1)
     
     return resolved_bindings
 
