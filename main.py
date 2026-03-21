@@ -1,6 +1,7 @@
-"""Main application for Card Factory - Hardware Card Generator"""
+"""Main application for Card Factory - Card Generator from Spreadsheet"""
 
 import os
+import sys
 import requests
 from dotenv import load_dotenv
 
@@ -10,12 +11,25 @@ from card_factory.utils.file_handler import download_file
 from card_factory.processors.file_filter import find_spreadsheet_file
 from card_factory.processors.xlsx_extractor import extract_xlsx_data
 from card_factory.binding.engine import CardBindingEngine
+from card_factory.config.loader import CardFactoryConfig
 
 
 def main():
-    print("=== Card Factory - Hardware Card Generator ===\n")
+    # Check for config file argument
+    config_path = None
+    if len(sys.argv) > 1:
+        config_path = sys.argv[1]
+        print(f"=== Card Factory - Using config: {config_path} ===\n")
+    else:
+        print("=== Card Factory - Using default settings ===\n")
     
     try:
+        # Load configuration
+        config = None
+        if config_path:
+            config = CardFactoryConfig(config_path)
+            print(f"Loaded configuration from: {config_path}\n")
+        
         api_key = load_api_key_from_env()
         print("Using API key from environment for authentication...\n")
         
@@ -57,9 +71,10 @@ def main():
             print(f"✗ Data extraction failed: {e}")
             return
         
-        # Generate hardware cards
-        print("Step 4: Generating hardware cards...")
-        engine = CardBindingEngine(export_dir="export")
+        # Generate cards
+        print("Step 4: Generating cards...")
+        export_dir = config.output_directory if config else "export"
+        engine = CardBindingEngine(config=config, export_dir=export_dir)
         generated_files = engine.generate_cards(spreadsheet_data)
         
         print(f"\n✓ Successfully generated {len(generated_files)} card(s)")
