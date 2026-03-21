@@ -320,12 +320,70 @@ def set_element_text_content(element: etree.Element, new_text: str) -> None:
     element.text = new_text
 
 
+def resolve_url_template(url_template: str, row_data: Dict[str, Any], element_id: str) -> str:
+    """Resolve URL template by replacing {field} placeholders with values from row_data.
+    
+    Unlike text bindings, URLs should be returned as-is if they don't contain placeholders
+    (rather than being looked up as column names).
+    """
+    if not url_template:
+        return ""
+    
+    if '{' not in url_template:
+        return url_template
+    
+    field_pattern = r'\{([^}]+)\}'
+    
+    def replace_field(match):
+        field_name = match.group(1)
+        if field_name not in row_data:
+            print(f"Warning: Column '{field_name}' not found for element '{element_id}'")
+            return ""
+        return str(row_data.get(field_name, ""))
+    
+    return re.sub(field_pattern, replace_field, url_template)
+
+
+def download_and_embed_image(url: str, element_id: str) -> str:
+    """Download image from URL and convert to data URI blob.
+    
+    Downloads with caching, warns on failure and returns empty string.
+    
+    Returns:
+        Data URI string for embedding, or empty string on failure
+    """
+    from ..utils.file_handler import download_image_cached, image_to_data_uri
+    
+    if not url:
+        return ""
+    
+    try:
+        image_bytes, mime_type = download_image_cached(url)
+        return image_to_data_uri(image_bytes, mime_type)
+    except Exception as e:
+        print(f"Warning: Failed to download image for '{element_id}' from '{url}': {e}")
+        return ""
+
+
+def apply_image_to_element(element: etree.Element, attribute: str, data_uri: str) -> None:
+    """Set an attribute on an SVG element (typically xlink:href for images)."""
+    if not data_uri:
+        return
+    
+    # Handle xlink:href specially (SVG uses xlink namespace)
+    if attribute == 'xlink:href':
+        element.set('{http://www.w3.org/1999/xlink}href', data_uri)
+    else:
+        element.set(attribute, data_uri)
+
+
 def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any]) -> etree.ElementTree:
     """Substitute values from row_data into template elements based on bindings"""
     
     for binding in bindings:
         element_id = binding["element_id"]
         template_value = binding.get("value", "")
+        attribute = binding.get("attribute")
         
         # Find element in template
         element = tree.find(f".//*[@id='{element_id}']")
@@ -334,7 +392,17 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
             print(f"Warning: Element '{element_id}' not found in template")
             continue
         
-        # Resolve template with row data
+        # Check if this is an image binding (has attribute field)
+        if attribute:
+            # Image binding: resolve URL and embed as blob
+            url = resolve_url_template(template_value, row_data, element_id)
+            if url:
+                data_uri = download_and_embed_image(url, element_id)
+                if data_uri:
+                    apply_image_to_element(element, attribute, data_uri)
+            continue
+        
+        # Text binding (default behavior)
         value = resolve_template_value(template_value, row_data, element_id)
         
         # Apply prefix if specified and value is not empty

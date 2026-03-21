@@ -17,6 +17,8 @@ filter:
 #   - value: field name(s) to use, supports templates like "{field}" or "{field1}\n\n{field2}"
 #   - Transform tags: [uppercase]{field}[/uppercase], [lowercase]{field}[/lowercase]
 #   - prefix: text to prepend if value is not empty
+#   - attribute: for image bindings, set this to the attribute to modify (e.g., "xlink:href")
+#     Images are downloaded, cached locally, and embedded as base64 blobs
 bindings:
   - element_id: "name"
     value: "name"
@@ -36,6 +38,11 @@ bindings:
 
   - element_id: "copyright"
     value: "illustrator"
+
+  # Image binding example - downloads and embeds card illustration
+  - element_id: "illustration"
+    attribute: "xlink:href"
+    value: "https://card-images.netrunnerdb.com/v2/xlarge/{NRDB_ID}.webp"
 
 # Output settings
 output:
