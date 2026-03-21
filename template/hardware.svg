@@ -271,9 +271,9 @@
          y="605.44823"
          id="tspan3"><tspan
            style="font-weight:normal;-inkscape-font-specification:'Monkirta Pursuit NC';stroke:#000000"
-           id="type">TYPE</tspan><tspan
+           id="sbru">${type}</tspan><tspan
            style="font-weight:bold"
-           id="subtypes"> - Subtypes</tspan></tspan></text><text
+           id="sbri">${subtypes}</tspan></tspan></text><text
        xml:space="preserve"
        transform="matrix(0.07894638,0,0,0.07894638,194.60053,17.651137)"
        id="text-body"

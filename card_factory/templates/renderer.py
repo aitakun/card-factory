@@ -1,12 +1,114 @@
 """SVG Template rendering and value substitution"""
 
 import re
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Set
 from lxml import etree
 from pathlib import Path
 
 
 SVG_NS = "{http://www.w3.org/2000/svg}"
+
+INLINE_PATTERN_RE = re.compile(r'\$\{([^}]+)\}')
+
+
+def resolve_inline_patterns(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any]) -> Set[str]:
+    """Find and resolve ${binding_id} patterns in SVG elements.
+    
+    Searches for ${id} patterns in:
+    - Element text content
+    - Element tails (text following child elements)
+    - Element attributes
+    
+    Patterns are resolved using the matching binding from the bindings list.
+    After resolution, the pattern is replaced with the resolved value.
+    
+    Returns:
+        Set of binding IDs that were resolved via inline patterns
+    """
+    # Build lookup from binding_id to binding config
+    binding_lookup = {b["element_id"]: b for b in bindings}
+    resolved_bindings: Set[str] = set()
+    
+    # Search all elements in the tree
+    for element in tree.iter():
+        # Check attributes
+        for attr_name in list(element.attrib.keys()):
+            attr_value = element.get(attr_name)
+            matches = INLINE_PATTERN_RE.findall(attr_value)
+            for binding_id in matches:
+                resolved_bindings.add(binding_id)
+                binding = binding_lookup.get(binding_id)
+                if binding is None:
+                    print(f"Warning: No binding found for ${{{binding_id}}} in attribute '{attr_name}'")
+                    continue
+                
+                # Resolve the value
+                resolved = resolve_binding_value(binding, row_data)
+                if resolved:
+                    # Replace the pattern with the resolved value
+                    new_value = INLINE_PATTERN_RE.sub(resolved, attr_value, count=1)
+                    element.set(attr_name, new_value)
+        
+        # Check element text content
+        if element.text:
+            matches = INLINE_PATTERN_RE.findall(element.text)
+            for binding_id in matches:
+                resolved_bindings.add(binding_id)
+                binding = binding_lookup.get(binding_id)
+                if binding is None:
+                    print(f"Warning: No binding found for ${{{binding_id}}} in text content")
+                    continue
+                
+                # Resolve the value
+                resolved = resolve_binding_value(binding, row_data)
+                if resolved:
+                    element.text = INLINE_PATTERN_RE.sub(resolved, element.text, count=1)
+        
+        # Check element tail (text following child elements)
+        for child in element:
+            if child.tail:
+                matches = INLINE_PATTERN_RE.findall(child.tail)
+                for binding_id in matches:
+                    resolved_bindings.add(binding_id)
+                    binding = binding_lookup.get(binding_id)
+                    if binding is None:
+                        print(f"Warning: No binding found for ${{{binding_id}}} in text tail")
+                        continue
+                    
+                    resolved = resolve_binding_value(binding, row_data)
+                    if resolved:
+                        child.tail = INLINE_PATTERN_RE.sub(resolved, child.tail, count=1)
+    
+    return resolved_bindings
+
+
+def resolve_binding_value(binding: Dict[str, Any], row_data: Dict[str, Any]) -> str:
+    """Resolve a binding to its final value for inline pattern substitution.
+    
+    Used by inline pattern resolution to get the value without applying to an element.
+    For inline patterns, the binding value is treated as a literal value (not a field reference).
+    """
+    element_id = binding["element_id"]
+    template_value = binding.get("value", "")
+    attribute = binding.get("attribute")
+    
+    # For image bindings (attribute), resolve the URL and embed as blob
+    if attribute:
+        url = resolve_url_template(template_value, row_data, element_id)
+        if url:
+            data_uri = download_and_embed_image(url, element_id)
+            return data_uri
+        return ""
+    
+    # Text binding - resolve template with row data
+    value = resolve_template_value(template_value, row_data, element_id)
+    
+    # Apply prefix if specified and value is not empty
+    prefix = binding.get("prefix")
+    if prefix and value:
+        value = prefix + value
+    
+    return value
 
 
 def parse_markdown_segments(text: str) -> List[Dict[str, Any]]:
@@ -378,10 +480,24 @@ def apply_image_to_element(element: etree.Element, attribute: str, data_uri: str
 
 
 def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any]) -> etree.ElementTree:
-    """Substitute values from row_data into template elements based on bindings"""
+    """Substitute values from row_data into template elements based on bindings.
     
+    Resolution order:
+    1. Inline ${binding_id} patterns in SVG elements
+    2. Standard bindings by element ID
+    """
+    
+    # Step 1: Resolve inline ${id} patterns first
+    resolved_bindings = resolve_inline_patterns(tree, bindings, row_data)
+    
+    # Step 2: Apply remaining bindings by element ID (skip if already resolved inline)
     for binding in bindings:
         element_id = binding["element_id"]
+        
+        # Skip if this binding was resolved via inline pattern
+        if element_id in resolved_bindings:
+            continue
+        
         template_value = binding.get("value", "")
         attribute = binding.get("attribute")
         
