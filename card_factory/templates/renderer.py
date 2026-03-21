@@ -1,9 +1,156 @@
 """SVG Template rendering and value substitution"""
 
 import re
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List, Tuple
 from lxml import etree
 from pathlib import Path
+
+
+SVG_NS = "{http://www.w3.org/2000/svg}"
+
+
+def parse_markdown_segments(text: str) -> List[Dict[str, Any]]:
+    """
+    Parse text with markdown formatting and return segments with formatting info.
+    
+    Supports:
+    - **text** or __text__ for bold
+    - *text* or _text_ for italics
+    
+    Input: "This is **bold** and *italic* text"
+    Output: [
+        {"text": "This is ", "bold": False, "italic": False},
+        {"text": "bold", "bold": True, "italic": False},
+        {"text": " and ", "bold": False, "italic": False},
+        {"text": "italic", "bold": False, "italic": True},
+        {"text": " text", "bold": False, "italic": False}
+    ]
+    """
+    if not text:
+        return []
+    
+    segments = []
+    
+    # Combined pattern for all markers
+    # Order: **bold**, __bold__, *italic*, _italic_, ***bold italic***
+    # Need to handle *** (bold+italic) first
+    pattern = r'(\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_([^_]+)_)'
+    
+    last_end = 0
+    
+    for match in re.finditer(pattern, text):
+        # Add plain text before this match
+        if match.start() > last_end:
+            plain_text = text[last_end:match.start()]
+            if plain_text:
+                segments.append({"text": plain_text, "bold": False, "italic": False})
+        
+        full_match = match.group(0)
+        
+        # Check for bold+italic (***text***)
+        bold_italic_match = re.match(r'\*\*\*([^*]+)\*\*\*', full_match)
+        if bold_italic_match:
+            segments.append({
+                "text": bold_italic_match.group(1),
+                "bold": True,
+                "italic": True
+            })
+            last_end = match.end()
+            continue
+        
+        # Check for bold (**text** or __text__)
+        bold_match = re.match(r'\*\*([^*]+)\*\*|__([^_]+)__', full_match)
+        if bold_match:
+            bold_text = bold_match.group(1) or bold_match.group(2)
+            segments.append({"text": bold_text, "bold": True, "italic": False})
+            last_end = match.end()
+            continue
+        
+        # Check for italic (*text* or _text_)
+        italic_match = re.match(r'\*([^*]+)\*|_([^_]+)_', full_match)
+        if italic_match:
+            italic_text = italic_match.group(1) or italic_match.group(2)
+            segments.append({"text": italic_text, "bold": False, "italic": True})
+            last_end = match.end()
+            continue
+    
+    # Add remaining plain text
+    if last_end < len(text):
+        remaining = text[last_end:]
+        if remaining:
+            segments.append({"text": remaining, "bold": False, "italic": False})
+    
+    return segments
+
+
+def apply_formatted_text(element: etree.Element, text: str) -> None:
+    """
+    Replace element's content with formatted tspans based on markdown.
+    
+    Creates multiple tspans without whitespace between them to prevent
+    unwanted spaces in the rendered text.
+    """
+    # Find or create the parent text element
+    if element.tag == f"{SVG_NS}text":
+        parent = element
+    elif element.tag == f"{SVG_NS}tspan":
+        parent = element.getparent()
+        if parent is None:
+            parent = element
+    else:
+        # Non-text element, just set text
+        set_element_text_content(element, text)
+        return
+    
+    # Clear all existing children tspans
+    for child in list(parent):
+        if child.tag.endswith('}tspan'):
+            parent.remove(child)
+    
+    # Parse markdown into segments
+    segments = parse_markdown_segments(text)
+    
+    if not segments:
+        # Empty text - clear parent
+        parent.text = None
+        return
+    
+    # Create tspans for each segment
+    first = True
+    for segment in segments:
+        seg_text = segment["text"]
+        if not seg_text:
+            continue
+        
+        tspan = etree.SubElement(parent, f"{SVG_NS}tspan")
+        
+        # Copy x, y attributes from original tspan if it exists
+        original_tspan = None
+        for child in parent:
+            if child.tag.endswith('}tspan') and child.get('x') and child.get('y'):
+                original_tspan = child
+                break
+        
+        if original_tspan is not None and first:
+            # Copy position attributes only to first tspan
+            if original_tspan.get('x'):
+                tspan.set('x', original_tspan.get('x'))
+            if original_tspan.get('y'):
+                tspan.set('y', original_tspan.get('y'))
+        
+        # Set formatting attributes
+        if segment["bold"]:
+            tspan.set("font-weight", "bold")
+        if segment["italic"]:
+            tspan.set("font-style", "italic")
+        
+        # Set text content (no spaces between tspans)
+        tspan.text = seg_text
+        
+        first = False
+    
+    # Set parent text to None (tspans contain the text)
+    parent.text = None
 
 
 def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: str) -> str:
@@ -37,7 +184,6 @@ def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: 
     def replace_transform(match):
         transform_type = match.group(1)
         field_name = match.group(2)
-        full_match = match.group(0)  # e.g., [uppercase]{field}[/uppercase]
         
         if field_name not in row_data:
             print(f"Warning: Column '{field_name}' not found for element '{element_id}'")
@@ -73,8 +219,8 @@ def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: 
     # Replace remaining field placeholders
     result = re.sub(field_pattern, replace_field, result)
     
-    # Remove any remaining ** pairs that resulted from empty fields
-    result = re.sub(r'\*\*', '', result)
+    # Remove any remaining ** or __ pairs that resulted from empty fields
+    result = re.sub(r'\*\*|__', '', result)
     
     # Clean up any extra whitespace/newlines from empty sections
     result = result.strip()
@@ -127,32 +273,8 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
         if prefix and value:
             value = prefix + value
         
-        # Handle text elements
-        tag = element.tag.split("}")[-1]  # Get local name without namespace
-        
-        if tag == "text":
-            # Find first direct tspan child
-            tspan = element.find("{http://www.w3.org/2000/svg}tspan")
-            if tspan is not None:
-                # Clear nested children of tspan (keep tspan element with attributes)
-                for child in list(tspan):
-                    tspan.remove(child)
-                # Set the tspan's text (or leave empty if value is empty)
-                tspan.text = value if value else None
-                # Remove any other tspan siblings
-                for child in list(element):
-                    if child is not tspan and child.tag.endswith('}tspan'):
-                        element.remove(child)
-            else:
-                element.text = value if value else None
-        elif tag == "tspan":
-            # Clear all nested tspans before setting text
-            for child in list(element):
-                element.remove(child)
-            element.text = value if value else None
-        else:
-            # For other elements, just set text content
-            set_element_text_content(element, value if value else "")
+        # Apply formatted text to element (with markdown support)
+        apply_formatted_text(element, value)
     
     return tree
 
