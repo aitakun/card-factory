@@ -32,7 +32,7 @@ bindings:
     value: "cost"
 
   - element_id: "text-body"
-    value: "{text}\n\n**{flavor}**"
+    value: "**{text}**\n\n_{flavor}_"
 
   - element_id: "copyright"
     value: "illustrator"

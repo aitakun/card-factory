@@ -87,70 +87,136 @@ def apply_formatted_text(element: etree.Element, text: str) -> None:
     """
     Replace element's content with formatted tspans based on markdown.
     
-    Creates multiple tspans without whitespace between them to prevent
-    unwanted spaces in the rendered text.
+    Handles different element types:
+    - If element is a tspan (has ID on tspan): modify that tspan directly
+    - If element is a text (has ID on text): create formatted tspans as children
+    
+    Special handling for nested tspan structures where parent is also a tspan.
     """
-    # Find or create the parent text element
-    if element.tag == f"{SVG_NS}text":
-        parent = element
-    elif element.tag == f"{SVG_NS}tspan":
+    
+    # If element is a tspan itself (ID is on the tspan)
+    if element.tag == f"{SVG_NS}tspan":
+        segments = parse_markdown_segments(text)
+        
+        if not segments:
+            element.text = None
+            return
+        
+        if len(segments) == 1 and not segments[0]["bold"] and not segments[0]["italic"]:
+            element.text = segments[0]["text"]
+            return
+        
+        # Find the proper text parent (may be grandparent if parent is also a tspan)
         parent = element.getparent()
         if parent is None:
-            parent = element
-    else:
-        # Non-text element, just set text
-        set_element_text_content(element, text)
-        return
-    
-    # Clear all existing children tspans
-    for child in list(parent):
-        if child.tag.endswith('}tspan'):
-            parent.remove(child)
-    
-    # Parse markdown into segments
-    segments = parse_markdown_segments(text)
-    
-    if not segments:
-        # Empty text - clear parent
+            element.text = text
+            return
+        
+        # If parent is also a tspan, need to go up to find the text element
+        actual_text_parent = None
+        if parent.tag == f"{SVG_NS}tspan":
+            grandparent = parent.getparent()
+            if grandparent is not None and grandparent.tag == f"{SVG_NS}text":
+                actual_text_parent = grandparent
+                parent = grandparent
+            else:
+                element.text = text
+                return
+        elif parent.tag == f"{SVG_NS}text":
+            actual_text_parent = parent
+        else:
+            element.text = text
+            return
+        
+        # Find this tspan's position in parent
+        tspans = [child for child in parent if child.tag == f"{SVG_NS}tspan"]
+        if element in tspans:
+            idx = tspans.index(element)
+        else:
+            idx = 0
+        
+        # Clear all tspans from parent
+        for child in list(parent):
+            if child.tag == f"{SVG_NS}tspan":
+                parent.remove(child)
+        
+        # Create new tspans at the same position
+        current_idx = 0
+        for segment in segments:
+            seg_text = segment["text"]
+            if not seg_text:
+                continue
+            
+            tspan = etree.Element(f"{SVG_NS}tspan")
+            
+            # Copy attributes from original tspan (first one only)
+            if current_idx == idx and len(element.attrib) > 0:
+                for attr, val in element.attrib.items():
+                    if attr not in ('id',):
+                        tspan.set(attr, val)
+            
+            # Set formatting attributes
+            if segment["bold"]:
+                tspan.set("font-weight", "bold")
+            if segment["italic"]:
+                tspan.set("font-style", "italic")
+            
+            tspan.text = seg_text
+            
+            parent.insert(current_idx, tspan)
+            current_idx += 1
+        
         parent.text = None
         return
     
-    # Create tspans for each segment
-    first = True
-    for segment in segments:
-        seg_text = segment["text"]
-        if not seg_text:
-            continue
-        
-        tspan = etree.SubElement(parent, f"{SVG_NS}tspan")
-        
-        # Copy x, y attributes from original tspan if it exists
-        original_tspan = None
-        for child in parent:
-            if child.tag.endswith('}tspan') and child.get('x') and child.get('y'):
-                original_tspan = child
+    # If element is a text element (ID is on text)
+    if element.tag == f"{SVG_NS}text":
+        # Capture original tspan attributes (first one) for style preservation
+        original_tspan_attrs = {}
+        for child in element:
+            if child.tag == f"{SVG_NS}tspan":
+                original_tspan_attrs = dict(child.attrib)
                 break
         
-        if original_tspan is not None and first:
-            # Copy position attributes only to first tspan
-            if original_tspan.get('x'):
-                tspan.set('x', original_tspan.get('x'))
-            if original_tspan.get('y'):
-                tspan.set('y', original_tspan.get('y'))
+        # Clear all existing children tspans
+        for child in list(element):
+            if child.tag == f"{SVG_NS}tspan":
+                element.remove(child)
         
-        # Set formatting attributes
-        if segment["bold"]:
-            tspan.set("font-weight", "bold")
-        if segment["italic"]:
-            tspan.set("font-style", "italic")
+        segments = parse_markdown_segments(text)
         
-        # Set text content (no spaces between tspans)
-        tspan.text = seg_text
+        if not segments:
+            # Empty text - clear parent
+            element.text = None
+            return
         
-        first = False
+        # Create tspans for each segment
+        for segment in segments:
+            seg_text = segment["text"]
+            if not seg_text:
+                continue
+            
+            tspan = etree.SubElement(element, f"{SVG_NS}tspan")
+            
+            # Copy original tspan attributes (except id)
+            for attr, val in original_tspan_attrs.items():
+                if attr != 'id':
+                    tspan.set(attr, val)
+            
+            # Set formatting attributes
+            if segment["bold"]:
+                tspan.set("font-weight", "bold")
+            if segment["italic"]:
+                tspan.set("font-style", "italic")
+            
+            # Set text content (no spaces between tspans)
+            tspan.text = seg_text
+        
+        element.text = None
+        return
     
-    # Set parent text to None (tspans contain the text)
-    parent.text = None
+    # Non-text/tspan element, just set text
+    set_element_text_content(element, text)
 
 
 def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: str) -> str:
