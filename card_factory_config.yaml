@@ -16,6 +16,8 @@ filter:
 # Supported options:
 #   - value: field name(s) to use, supports templates like "{field}" or "{field1}\n\n{field2}"
 #   - Transform tags: [uppercase]{field}[/uppercase], [lowercase]{field}[/lowercase]
+#   - Inline patterns: ${binding_id} in SVG templates (resolved from bindings)
+#   - Markdown-like formatting: *bold*, !heavy! (font-weight:900), _italic_
 #   - prefix: text to prepend if value is not empty
 #   - attribute: for image bindings, set this to the attribute to modify (e.g., "xlink:href")
 #     Images are downloaded, cached locally, and embedded as base64 blobs
@@ -34,9 +36,9 @@ bindings:
     value: "cost"
 
   - element_id: "text-body"
-    value: "**{text}**\n\n_{flavor}_"
+    value: "*{text}*\n\n_{flavor}_"
 
-  - element_id: "copyright"
+  - element_id: "illustrator"
     value: "illustrator"
 
   # Image binding example - downloads and embeds card illustration

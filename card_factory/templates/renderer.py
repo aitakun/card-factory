@@ -58,8 +58,11 @@ def resolve_inline_patterns(tree: etree.ElementTree, bindings: List[Dict[str, An
                     continue
                 
                 resolved = resolve_binding_value(binding, row_data)
-                # Always substitute, even if empty string
-                element.text = INLINE_PATTERN_RE.sub(resolved, element.text, count=1)
+                # Substitute the pattern
+                new_text = INLINE_PATTERN_RE.sub(resolved, element.text, count=1)
+                element.text = new_text
+                # Apply text with markdown formatting (handles all cases)
+                apply_formatted_text(element, new_text)
         
         # Check element tail (text following child elements)
         for child in element:
@@ -73,7 +76,7 @@ def resolve_inline_patterns(tree: etree.ElementTree, bindings: List[Dict[str, An
                         continue
                     
                     resolved = resolve_binding_value(binding, row_data)
-                    # Always substitute, even if empty string
+                    # Substitute the pattern
                     child.tail = INLINE_PATTERN_RE.sub(resolved, child.tail, count=1)
     
     return resolved_bindings
@@ -110,208 +113,219 @@ def resolve_binding_value(binding: Dict[str, Any], row_data: Dict[str, Any]) -> 
 
 def parse_markdown_segments(text: str) -> List[Dict[str, Any]]:
     """
-    Parse text with markdown formatting and return segments with formatting info.
+    Parse text with markdown-like formatting and return segments with nested structure.
     
-    Supports:
-    - **text** or __text__ for bold
-    - *text* or _text_ for italics
+    Supports nested formatting:
+    - *text* for bold
+    - !text! for heavy (font-weight: 900)
+    - _text_ for italic
     
-    Input: "This is **bold** and *italic* text"
-    Output: [
-        {"text": "This is ", "bold": False, "italic": False},
-        {"text": "bold", "bold": True, "italic": False},
-        {"text": " and ", "bold": False, "italic": False},
-        {"text": "italic", "bold": False, "italic": True},
-        {"text": " text", "bold": False, "italic": False}
-    ]
+    Heavy and italic can be nested inside bold.
     """
     if not text:
         return []
     
+    MARKERS = [
+        ('*', '*', 'bold'),
+        ('!', '!', 'heavy'),
+        ('_', '_', 'italic'),
+    ]
+    
+    def find_matching_close(txt, start):
+        """Find the matching close marker for the opener at position start."""
+        open_c = txt[start]
+        close_c = None
+        fmt = None
+        
+        for o, c, f in MARKERS:
+            if o == open_c:
+                close_c = c
+                fmt = f
+                break
+        
+        if not close_c:
+            return None, None, None
+        
+        depth = 1
+        i = start + 1
+        while i < len(txt) and depth > 0:
+            char = txt[i]
+            # Check closer FIRST (important for same-char markers like *)
+            if char == close_c and open_c == close_c:
+                depth -= 1
+                if depth == 0:
+                    return i + 1, txt[start+1:i], fmt
+            elif char == close_c:
+                depth -= 1
+                if depth == 0:
+                    return i + 1, txt[start+1:i], fmt
+            elif char == open_c:
+                # Nested opener
+                depth += 1
+            i += 1
+        
+        return None, None, None
+    
     segments = []
+    i = 0
     
-    # Combined pattern for all markers
-    # Order: **bold**, __bold__, *italic*, _italic_, ***bold italic***
-    # Need to handle *** (bold+italic) first
-    pattern = r'(\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_([^_]+)_)'
-    
-    last_end = 0
-    
-    for match in re.finditer(pattern, text):
-        # Add plain text before this match
-        if match.start() > last_end:
-            plain_text = text[last_end:match.start()]
-            if plain_text:
-                segments.append({"text": plain_text, "bold": False, "italic": False})
+    while i < len(text):
+        char = text[i]
+        matched = False
         
-        full_match = match.group(0)
+        for open_c, close_c, fmt in MARKERS:
+            if char == open_c:
+                # Try to find a matching close
+                end, inner, _ = find_matching_close(text, i)
+                if end:
+                    # Found a match
+                    # Recursively parse inner content
+                    inner_segments = parse_markdown_segments(inner)
+                    
+                    # Check if inner has formatting
+                    has_inner = any(s.get("format") is not None for s in inner_segments)
+                    
+                    if has_inner:
+                        # Inner has formatting - wrap it with outer
+                        segments.append({
+                            "format": fmt,
+                            "content": inner_segments
+                        })
+                    else:
+                        segments.append({"text": inner, "format": fmt})
+                    
+                    i = end
+                    matched = True
+                    break
         
-        # Check for bold+italic (***text***)
-        bold_italic_match = re.match(r'\*\*\*([^*]+)\*\*\*', full_match)
-        if bold_italic_match:
-            segments.append({
-                "text": bold_italic_match.group(1),
-                "bold": True,
-                "italic": True
-            })
-            last_end = match.end()
-            continue
-        
-        # Check for bold (**text** or __text__)
-        bold_match = re.match(r'\*\*([^*]+)\*\*|__([^_]+)__', full_match)
-        if bold_match:
-            bold_text = bold_match.group(1) or bold_match.group(2)
-            segments.append({"text": bold_text, "bold": True, "italic": False})
-            last_end = match.end()
-            continue
-        
-        # Check for italic (*text* or _text_)
-        italic_match = re.match(r'\*([^*]+)\*|_([^_]+)_', full_match)
-        if italic_match:
-            italic_text = italic_match.group(1) or italic_match.group(2)
-            segments.append({"text": italic_text, "bold": False, "italic": True})
-            last_end = match.end()
-            continue
+        if not matched:
+            # Not a marker start, collect as plain text
+            if not segments or segments[-1].get("format") is not None:
+                segments.append({"text": char, "format": None})
+            else:
+                segments[-1]["text"] += char
+            i += 1
     
-    # Add remaining plain text
-    if last_end < len(text):
-        remaining = text[last_end:]
-        if remaining:
-            segments.append({"text": remaining, "bold": False, "italic": False})
+    # Merge consecutive plain segments
+    merged = []
+    for seg in segments:
+        if seg.get("format") is None and merged and merged[-1].get("format") is None:
+            merged[-1]["text"] += seg["text"]
+        else:
+            merged.append(seg)
     
-    return segments
+    return merged
+
+
+def apply_markdown_within_tspan(tspan: etree.Element, text: str) -> None:
+    """
+    Apply markdown formatting by creating nested tspans within an existing tspan.
+    The parent tspan's base attributes are inherited, but font-weight/font-style
+    are explicitly set for formatted segments.
+    """
+    segments = parse_markdown_segments(text)
+    
+    if not segments:
+        tspan.text = None
+        return
+    
+    # Check if any segment needs formatting
+    needs_formatting = any(s.get("format") is not None for s in segments)
+    
+    if not needs_formatting:
+        # No formatting needed, just set the text
+        tspan.text = text
+        return
+    
+    # Save the parent tspan's base attributes (excluding formatting-specific ones)
+    base_attrs = {}
+    for attr, val in tspan.attrib.items():
+        if attr not in ('id',):
+            base_attrs[attr] = val
+    
+    # Clear the parent tspan (both text and children)
+    tspan.text = None
+    for child in list(tspan):
+        tspan.remove(child)
+    
+    # Create nested tspans recursively
+    def create_nested_tspan(parent_tspan, segment, parent_format=None):
+        """Recursively create tspans for segments with nested formatting support."""
+        fmt = segment.get("format")
+        content = segment.get("content")
+        
+        # Determine font attributes based on format
+        font_weight = None
+        font_style = None
+        
+        if fmt == "heavy":
+            font_weight = "900"
+        elif fmt == "bold":
+            font_weight = "bold"
+        elif fmt == "italic":
+            font_style = "italic"
+        
+        # Create the tspan
+        nested = etree.SubElement(parent_tspan, f"{SVG_NS}tspan")
+        
+        # Copy base attributes (but don't override font-weight/font-style from inner formatting)
+        for attr, val in base_attrs.items():
+            if attr not in ('font-weight', 'font-style'):
+                nested.set(attr, val)
+        
+        # Apply this level's formatting (overrides base)
+        if font_weight:
+            nested.set("font-weight", font_weight)
+        if font_style:
+            nested.set("font-style", font_style)
+        
+        # Handle content
+        if content is not None:
+            # Has nested content - recursively create children
+            for child_seg in content:
+                create_nested_tspan(nested, child_seg, fmt)
+        else:
+            # Simple text
+            nested.text = segment.get("text", "")
+    
+    for segment in segments:
+        create_nested_tspan(tspan, segment)
 
 
 def apply_formatted_text(element: etree.Element, text: str) -> None:
     """
-    Replace element's content with formatted tspans based on markdown.
+    Apply text to element with markdown formatting support.
+    
+    Preserves existing tspan structure - only creates formatting tspans when needed.
     
     Handles different element types:
-    - If element is a tspan (has ID on tspan): modify that tspan directly
-    - If element is a text (has ID on text): create formatted tspans as children
-    
-    Special handling for nested tspan structures where parent is also a tspan.
+    - If element is a tspan (has ID on tspan): substitute text, apply markdown if needed
+    - If element is a text (has ID on text): if no existing tspans, create one with markdown;
+      if tspans exist, apply markdown within first tspan
     """
     
-    # If element is a tspan itself (ID is on the tspan)
-    if element.tag == f"{SVG_NS}tspan":
-        segments = parse_markdown_segments(text)
+    # If element is a text element
+    if element.tag == f"{SVG_NS}text":
+        # Find all child tspans
+        tspans = element.findall(f"{SVG_NS}tspan")
         
-        if not segments:
-            element.text = None
+        if not tspans:
+            # No existing tspans - create one with the text (markdown will be parsed within it)
+            tspan = etree.SubElement(element, f"{SVG_NS}tspan")
+            tspan.text = text
+            apply_markdown_within_tspan(tspan, text)
             return
         
-        if len(segments) == 1 and not segments[0]["bold"] and not segments[0]["italic"]:
-            element.text = segments[0]["text"]
-            return
-        
-        # Find the proper text parent (may be grandparent if parent is also a tspan)
-        parent = element.getparent()
-        if parent is None:
-            element.text = text
-            return
-        
-        # If parent is also a tspan, need to go up to find the text element
-        actual_text_parent = None
-        if parent.tag == f"{SVG_NS}tspan":
-            grandparent = parent.getparent()
-            if grandparent is not None and grandparent.tag == f"{SVG_NS}text":
-                actual_text_parent = grandparent
-                parent = grandparent
-            else:
-                element.text = text
-                return
-        elif parent.tag == f"{SVG_NS}text":
-            actual_text_parent = parent
-        else:
-            element.text = text
-            return
-        
-        # Find this tspan's position in parent
-        tspans = [child for child in parent if child.tag == f"{SVG_NS}tspan"]
-        if element in tspans:
-            idx = tspans.index(element)
-        else:
-            idx = 0
-        
-        # Clear all tspans from parent
-        for child in list(parent):
-            if child.tag == f"{SVG_NS}tspan":
-                parent.remove(child)
-        
-        # Create new tspans at the same position
-        current_idx = 0
-        for segment in segments:
-            seg_text = segment["text"]
-            if not seg_text:
-                continue
-            
-            tspan = etree.Element(f"{SVG_NS}tspan")
-            
-            # Copy attributes from original tspan (first one only)
-            if current_idx == idx and len(element.attrib) > 0:
-                for attr, val in element.attrib.items():
-                    if attr not in ('id',):
-                        tspan.set(attr, val)
-            
-            # Set formatting attributes
-            if segment["bold"]:
-                tspan.set("font-weight", "bold")
-            if segment["italic"]:
-                tspan.set("font-style", "italic")
-            
-            tspan.text = seg_text
-            
-            parent.insert(current_idx, tspan)
-            current_idx += 1
-        
-        parent.text = None
+        # Has existing tspans - apply to first one
+        tspan = tspans[0]
+        tspan.text = text
+        apply_markdown_within_tspan(tspan, text)
         return
     
-    # If element is a text element (ID is on text)
-    if element.tag == f"{SVG_NS}text":
-        # Capture original tspan attributes (first one) for style preservation
-        original_tspan_attrs = {}
-        for child in element:
-            if child.tag == f"{SVG_NS}tspan":
-                original_tspan_attrs = dict(child.attrib)
-                break
-        
-        # Clear all existing children tspans
-        for child in list(element):
-            if child.tag == f"{SVG_NS}tspan":
-                element.remove(child)
-        
-        segments = parse_markdown_segments(text)
-        
-        if not segments:
-            # Empty text - clear parent
-            element.text = None
-            return
-        
-        # Create tspans for each segment
-        for segment in segments:
-            seg_text = segment["text"]
-            if not seg_text:
-                continue
-            
-            tspan = etree.SubElement(element, f"{SVG_NS}tspan")
-            
-            # Copy original tspan attributes (except id)
-            for attr, val in original_tspan_attrs.items():
-                if attr != 'id':
-                    tspan.set(attr, val)
-            
-            # Set formatting attributes
-            if segment["bold"]:
-                tspan.set("font-weight", "bold")
-            if segment["italic"]:
-                tspan.set("font-style", "italic")
-            
-            # Set text content (no spaces between tspans)
-            tspan.text = seg_text
-        
-        element.text = None
+    # If element is a tspan
+    if element.tag == f"{SVG_NS}tspan":
+        element.text = text
+        apply_markdown_within_tspan(element, text)
         return
     
     # Non-text/tspan element, just set text
