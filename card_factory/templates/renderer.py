@@ -219,8 +219,11 @@ def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: 
     # Replace remaining field placeholders
     result = re.sub(field_pattern, replace_field, result)
     
-    # Remove any remaining ** or __ pairs that resulted from empty fields
-    result = re.sub(r'\*\*|__', '', result)
+    # Remove formatting markers that resulted from empty fields
+    # e.g., **** (from **empty**) should become empty, but **content** stays
+    # Match pairs of ** or __ where there's nothing between them
+    result = re.sub(r'\*\*\*\*+', '', result)  # **** or more
+    result = re.sub(r'______+', '', result)      # ____ or more
     
     # Clean up any extra whitespace/newlines from empty sections
     result = result.strip()
