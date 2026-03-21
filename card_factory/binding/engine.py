@@ -18,12 +18,12 @@ class CardBindingEngine:
         
         # Default bindings if no config provided
         self.default_bindings = [
-            {"element_id": "name", "source_column": "name", "transform": "uppercase"},
-            {"element_id": "type", "source_column": "type", "transform": "uppercase"},
-            {"element_id": "subtypes", "source_column": "subtypes", "prefix": " - "},
-            {"element_id": "cost", "source_column": "cost"},
-            {"element_id": "text-body", "source_column": "text"},
-            {"element_id": "copyright", "source_column": "illustrator"}
+            {"element_id": "name", "value": "name"},
+            {"element_id": "type", "value": "[uppercase]{type}[/uppercase]"},
+            {"element_id": "subtypes", "value": "{subtypes}", "prefix": " - "},
+            {"element_id": "cost", "value": "cost"},
+            {"element_id": "text-body", "value": "{text}\n\n**{flavor}**"},
+            {"element_id": "copyright", "value": "illustrator"}
         ]
     
     def sanitize_filename(self, text: str) -> str:

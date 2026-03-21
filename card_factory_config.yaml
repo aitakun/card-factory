@@ -14,30 +14,28 @@ filter:
 
 # Bindings: map SVG element IDs to spreadsheet columns
 # Supported options:
-#   - source_column: spreadsheet column name
+#   - value: field name(s) to use, supports templates like "{field}" or "{field1}\n\n{field2}"
+#   - Transform tags: [uppercase]{field}[/uppercase], [lowercase]{field}[/lowercase]
 #   - prefix: text to prepend if value is not empty
-#   - transform: "uppercase" or "lowercase"
 bindings:
   - element_id: "name"
-    source_column: "name"
-    transform: "uppercase"
+    value: "name"
 
   - element_id: "type"
-    source_column: "type"
-    transform: "uppercase"
+    value: "[uppercase]{type}[/uppercase]"
 
   - element_id: "subtypes"
-    source_column: "subtypes"
+    value: "{subtypes}"
     prefix: " - "
 
   - element_id: "cost"
-    source_column: "cost"
+    value: "cost"
 
   - element_id: "text-body"
-    source_column: "text"
+    value: "{text}\n\n**{flavor}**"
 
   - element_id: "copyright"
-    source_column: "illustrator"
+    value: "illustrator"
 
 # Output settings
 output:
