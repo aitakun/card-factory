@@ -38,19 +38,19 @@ bindings:
   - element_id: "text-body"
     value: "*{text}*\n\n_{flavor}_"
 
-  - element_id: "copyright"
+  - element_id: "illustrator"
     value: "illustrator"
+
+  # Image binding example - downloads and embeds card illustration
+  - element_id: "illustration"
+    attribute: "xlink:href"
+    value: "https://card-images.netrunnerdb.com/v2/xlarge/{NRDB_ID}.webp"
 
 # Visibility: show/hide elements based on column values
 # Each entry has element_id and optional condition (column==value)
 visibility:
   - element_id: "unique-indicator"
     condition: "unique==yes"
-
-  # Image binding example - downloads and embeds card illustration
-  - element_id: "illustration"
-    attribute: "xlink:href"
-    value: "https://card-images.netrunnerdb.com/v2/xlarge/{NRDB_ID}.webp"
 
 # Output settings
 output:
