@@ -599,26 +599,57 @@ def save_svg(tree: etree.ElementTree, output_path: str) -> None:
 
 
 def evaluate_condition(condition: str, row_data: Dict[str, Any]) -> bool:
-    """Evaluate a simple 'column==value' condition.
+    """Evaluate a condition with support for ==, >, <, >=, <=.
     
     Returns True if condition passes (element should be shown),
     False if condition fails (element should be hidden).
     
     If condition is empty or invalid, returns True (show by default).
+    
+    Examples:
+        - cost==5
+        - strength>3
+        - amount>=10
     """
     if not condition:
         return True
     
-    match = re.match(r'^([^=]+)==(.+)$', condition.strip())
+    # Pattern to match all operators: ==, >, <, >=, <=
+    match = re.match(r'^([^=]+)(>=|<=|==|>|<)(.+)$', condition.strip())
     if not match:
-        print(f"Warning: Invalid condition format: '{condition}' (expected 'column==value')")
+        print(f"Warning: Invalid condition format: '{condition}' (expected 'column==value' or 'column>value', etc.)")
         return True
     
-    column, expected = match.groups()
+    column, operator, expected = match.groups()
     column = column.strip()
     expected = expected.strip()
     
     actual = str(row_data.get(column, ""))
+    
+    # Handle numeric comparisons
+    if operator in ('>', '<', '>=', '<='):
+        # Empty strings should warn and hide
+        if not actual:
+            print(f"Warning: Cannot compare empty value for '{column}' with {operator}")
+            return False
+        
+        try:
+            actual_num = float(actual)
+            expected_num = float(expected)
+        except ValueError:
+            print(f"Warning: Cannot compare non-numeric value '{actual}' with {operator}")
+            return False
+        
+        if operator == '>':
+            return actual_num > expected_num
+        elif operator == '<':
+            return actual_num < expected_num
+        elif operator == '>=':
+            return actual_num >= expected_num
+        elif operator == '<=':
+            return actual_num <= expected_num
+    
+    # For ==, keep existing string comparison (backwards compatible)
     return actual == expected
 
 
