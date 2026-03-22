@@ -56,6 +56,21 @@ visibility:
   - element_id: "unique-indicator"
     condition: "unique==yes"
 
+  - element_id: "pip1"
+    condition: "influence>=1"
+
+  - element_id: "pip2"
+    condition: "influence>=2"
+
+  - element_id: "pip3"
+    condition: "influence>=3"
+
+  - element_id: "pip4"
+    condition: "influence>=4"
+
+  - element_id: "pip5"
+    condition: "influence>=5"
+
 # Color schemes: map column values to SVG gradient colors
 # lookup_column: column to use for lookup
 # schemes: map values (case-insensitive) to color definitions
