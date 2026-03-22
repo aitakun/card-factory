@@ -602,3 +602,70 @@ def apply_visibility(tree: etree.ElementTree, visibility_config: List[Dict[str, 
         # Evaluate condition
         if not evaluate_condition(condition, row_data):
             element.set("display", "none")
+
+
+def apply_color_schemes(tree: etree.ElementTree, color_config: Dict[str, Any], row_data: Dict[str, Any]) -> None:
+    """Apply color scheme based on row data.
+    
+    color_config structure:
+    {
+        'lookup_column': 'faction',
+        'schemes': {
+            'criminal': {'primary-color': '#194c9b', ...},
+            'neutral': {...}
+        }
+    }
+    
+    For each color mapping, finds the gradient and updates its stop-color.
+    Lookup is case-insensitive.
+    """
+    if not color_config:
+        return
+    
+    lookup_column = color_config.get('lookup_column')
+    schemes = color_config.get('schemes', {})
+    
+    if not lookup_column or not schemes:
+        return
+    
+    # Get lookup value (case-insensitive)
+    lookup_value = str(row_data.get(lookup_column, "")).lower()
+    
+    # Find matching scheme (case-insensitive)
+    colors = None
+    for scheme_key, scheme_colors in schemes.items():
+        if scheme_key.lower() == lookup_value:
+            colors = scheme_colors
+            break
+    
+    if not colors:
+        # No matching scheme, keep existing colors
+        return
+    
+    # Apply colors to gradients
+    for gradient_id, color in colors.items():
+        gradient = tree.find(f".//*[@id='{gradient_id}']")
+        if gradient is None:
+            print(f"Warning: Gradient '{gradient_id}' not found in template for color scheme")
+            continue
+        
+        # Find stop element
+        stop = gradient.find(f"{SVG_NS}stop")
+        if stop is None:
+            print(f"Warning: No stop element found in gradient '{gradient_id}'")
+            continue
+        
+        # Update stop-color in style
+        stop_style = stop.get('style', '')
+        if 'stop-color:' in stop_style:
+            new_style = re.sub(
+                r'stop-color:[^;]+',
+                f'stop-color:{color}',
+                stop_style
+            )
+            stop.set('style', new_style)
+        else:
+            # No stop-color in style, add it
+            if stop_style and not stop_style.endswith(';'):
+                stop_style += ';'
+            stop.set('style', stop_style + f"stop-color:{color};")

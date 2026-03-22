@@ -16,6 +16,7 @@ class CardFactoryConfig:
         self.filter_contains: Optional[str] = None
         self.bindings: List[Dict[str, Any]] = []
         self.visibility: List[Dict[str, Any]] = []
+        self.color_schemes: Dict[str, Any] = {}
         self.output_directory: str = "export"
         self.filename_pattern: str = "{name}.svg"
         
@@ -58,6 +59,10 @@ class CardFactoryConfig:
         if 'visibility' in config:
             self.visibility = config['visibility']
         
+        # Load color schemes
+        if 'color_schemes' in config:
+            self.color_schemes = config['color_schemes']
+        
         # Load output settings
         if 'output' in config:
             output_config = config['output']
@@ -74,6 +79,10 @@ class CardFactoryConfig:
     def get_visibility(self) -> List[Dict[str, Any]]:
         """Get the list of visibility conditions"""
         return self.visibility
+    
+    def get_color_schemes(self) -> Dict[str, Any]:
+        """Get color schemes configuration"""
+        return self.color_schemes
     
     def get_filter(self) -> tuple:
         """Get filter settings as (column, contains) tuple"""

@@ -52,6 +52,22 @@ visibility:
   - element_id: "unique-indicator"
     condition: "unique==yes"
 
+# Color schemes: map column values to SVG gradient colors
+# lookup_column: column to use for lookup
+# schemes: map values (case-insensitive) to color definitions
+# Color IDs must match gradient IDs in the SVG template
+color_schemes:
+  lookup_column: "faction"
+  schemes:
+    criminal:
+      primary-color: "#194c9b"
+      light-color: "#75cbff"
+      lighter-color: "#d5f1fd"
+    neutral:
+      primary-color: "#666666"
+      light-color: "#999999"
+      lighter-color: "#cccccc"
+
 # Output settings
 output:
   directory: "export"
