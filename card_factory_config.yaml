@@ -48,7 +48,7 @@ bindings:
 
   - element_id: "faction-symbol"
     attribute: "xlink:href"
-    value: "icons/Faction%20Glyphs/NSG_ANARCH.svg"
+    value: "template/icons/Faction Glyphs/NSG_[uppercase]{faction}[/uppercase].svg"
 
 # Visibility: show/hide elements based on column values
 # Each entry has element_id and optional condition (column==value)
