@@ -46,6 +46,10 @@ bindings:
     attribute: "xlink:href"
     value: "https://card-images.netrunnerdb.com/v2/xlarge/{NRDB_ID}.webp"
 
+  - element_id: "faction-symbol"
+    attribute: "xlink:href"
+    value: "icons/Faction%20Glyphs/NSG_ANARCH.svg"
+
 # Visibility: show/hide elements based on column values
 # Each entry has element_id and optional condition (column==value)
 visibility:
