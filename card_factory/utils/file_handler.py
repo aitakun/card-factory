@@ -38,6 +38,58 @@ def get_mime_type_from_url(url: str) -> str:
     return 'application/octet-stream'
 
 
+def is_remote_url(url: str) -> bool:
+    """Check if URL is remote (http/https)."""
+    return url.startswith('http://') or url.startswith('https://')
+
+
+def get_mime_type_from_path(path: Path) -> str:
+    """Get MIME type from file extension."""
+    EXTENSION_TO_MIME = {
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+        '.svg': 'image/svg+xml',
+        '.bmp': 'image/bmp',
+    }
+    ext = path.suffix.lower()
+    return EXTENSION_TO_MIME.get(ext, 'application/octet-stream')
+
+
+def get_image_from_file(path: str) -> Tuple[bytes, str]:
+    """Read image from local filesystem.
+    
+    Returns:
+        Tuple of (image_bytes, mime_type)
+    """
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"Local image not found: {path}")
+    
+    with open(p, 'rb') as f:
+        image_bytes = f.read()
+    
+    mime_type = get_mime_type_from_path(p)
+    return image_bytes, mime_type
+
+
+def get_image(url_or_path: str) -> Tuple[bytes, str]:
+    """Get image from URL or local file.
+    
+    - If remote URL: download with caching
+    - If local path: read directly from filesystem
+    
+    Returns:
+        Tuple of (image_bytes, mime_type)
+    """
+    if is_remote_url(url_or_path):
+        return download_image_cached(url_or_path)
+    else:
+        return get_image_from_file(url_or_path)
+
+
 def download_image(url: str) -> Tuple[bytes, Optional[str]]:
     """Download image from URL.
     

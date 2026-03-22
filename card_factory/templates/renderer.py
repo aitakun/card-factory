@@ -465,16 +465,22 @@ def download_and_embed_image(url: str, element_id: str) -> str:
     Returns:
         Data URI string for embedding, or empty string on failure
     """
-    from ..utils.file_handler import download_image_cached, image_to_data_uri
+    from ..utils.file_handler import get_image, image_to_data_uri, is_remote_url
     
     if not url:
         return ""
     
     try:
-        image_bytes, mime_type = download_image_cached(url)
+        image_bytes, mime_type = get_image(url)
         return image_to_data_uri(image_bytes, mime_type)
+    except FileNotFoundError as e:
+        if is_remote_url(url):
+            print(f"Warning: Failed to download image for '{element_id}' from '{url}': {e}")
+        else:
+            print(f"Warning: Local image not found for '{element_id}': {url}")
+        return ""
     except Exception as e:
-        print(f"Warning: Failed to download image for '{element_id}' from '{url}': {e}")
+        print(f"Warning: Failed to get image for '{element_id}' from '{url}': {e}")
         return ""
 
 
