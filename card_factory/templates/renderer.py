@@ -555,3 +555,50 @@ def save_svg(tree: etree.ElementTree, output_path: str) -> None:
         encoding="UTF-8",
         pretty_print=False
     )
+
+
+def evaluate_condition(condition: str, row_data: Dict[str, Any]) -> bool:
+    """Evaluate a simple 'column==value' condition.
+    
+    Returns True if condition passes (element should be shown),
+    False if condition fails (element should be hidden).
+    
+    If condition is empty or invalid, returns True (show by default).
+    """
+    if not condition:
+        return True
+    
+    match = re.match(r'^([^=]+)==(.+)$', condition.strip())
+    if not match:
+        print(f"Warning: Invalid condition format: '{condition}' (expected 'column==value')")
+        return True
+    
+    column, expected = match.groups()
+    column = column.strip()
+    expected = expected.strip()
+    
+    actual = str(row_data.get(column, ""))
+    return actual == expected
+
+
+def apply_visibility(tree: etree.ElementTree, visibility_config: List[Dict[str, Any]], row_data: Dict[str, Any]) -> None:
+    """Show/hide elements based on visibility conditions.
+    
+    Each config has:
+    - element_id: ID of the element to control
+    - condition: simple expression like 'unique==yes' (optional, defaults to show)
+    
+    When condition evaluates to False, sets display="none" on the element.
+    """
+    for config in visibility_config:
+        element_id = config["element_id"]
+        condition = config.get("condition", "")
+        
+        element = tree.find(f".//*[@id='{element_id}']")
+        if element is None:
+            print(f"Warning: Element '{element_id}' not found in template for visibility control")
+            continue
+        
+        # Evaluate condition
+        if not evaluate_condition(condition, row_data):
+            element.set("display", "none")

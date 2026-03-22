@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 
 from ..templates.loader import load_template, construct_template_filename
-from ..templates.renderer import render_template, save_svg
+from ..templates.renderer import render_template, save_svg, apply_visibility
 
 
 class CardBindingEngine:
@@ -105,6 +105,12 @@ class CardBindingEngine:
         # Render template with data bindings
         bindings = self.get_bindings()
         tree = render_template(tree, bindings, row_data)
+        
+        # Apply visibility conditions
+        if self.config and hasattr(self.config, 'get_visibility'):
+            visibility_config = self.config.get_visibility()
+            if visibility_config:
+                apply_visibility(tree, visibility_config, row_data)
         
         # Generate output filename
         filename = self.generate_output_filename(row_data)

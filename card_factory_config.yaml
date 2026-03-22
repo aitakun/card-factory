@@ -38,8 +38,14 @@ bindings:
   - element_id: "text-body"
     value: "*{text}*\n\n_{flavor}_"
 
-  - element_id: "illustrator"
+  - element_id: "copyright"
     value: "illustrator"
+
+# Visibility: show/hide elements based on column values
+# Each entry has element_id and optional condition (column==value)
+visibility:
+  - element_id: "unique-indicator"
+    condition: "unique==yes"
 
   # Image binding example - downloads and embeds card illustration
   - element_id: "illustration"
