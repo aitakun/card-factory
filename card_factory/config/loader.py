@@ -89,9 +89,19 @@ class CardFactoryConfig:
         return (self.filter_column, self.filter_contains)
     
     def should_include_row(self, row: Dict[str, Any]) -> bool:
-        """Check if a row should be included based on filter"""
+        """Check if a row should be included based on filter.
+        
+        Supports '|' operator for OR logic. For example:
+        - filter_contains = "hardware|gene" matches if column contains "hardware" OR "gene"
+        """
         if not self.filter_column or not self.filter_contains:
             return True
         
         value = str(row.get(self.filter_column, "")).lower()
+        
+        # Support | for OR logic
+        if '|' in self.filter_contains:
+            patterns = self.filter_contains.lower().split('|')
+            return any(pattern in value for pattern in patterns)
+        
         return self.filter_contains.lower() in value

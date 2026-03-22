@@ -8,9 +8,10 @@ template:
   default: "template/hardware.svg"
 
 # Filter: only include rows where the column contains the specified text
+# Use | for OR logic: "hardware|gene" matches either
 filter:
   column: "type"
-  contains: "hardware"
+  contains: "hardware|gene"
 
 # Bindings: map SVG element IDs to spreadsheet columns
 # Supported options:
