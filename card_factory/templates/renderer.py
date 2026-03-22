@@ -493,30 +493,37 @@ def resolve_url_template(url_template: str, row_data: Dict[str, Any], element_id
 
 
 def download_and_embed_image(url: str, element_id: str) -> str:
-    """Download image from URL and convert to data URI blob.
+    """Download image from URL(s) and convert to data URI blob.
     
-    Downloads with caching, warns on failure and returns empty string.
+    Supports multiple URLs as fallback, separated by | or ,
+    Tries each URL in order until one succeeds.
     
     Returns:
-        Data URI string for embedding, or empty string on failure
+        Data URI string for embedding, or empty string if all fail
     """
     from ..utils.file_handler import get_image, image_to_data_uri, is_remote_url
     
     if not url:
         return ""
     
-    try:
-        image_bytes, mime_type = get_image(url)
-        return image_to_data_uri(image_bytes, mime_type)
-    except FileNotFoundError as e:
-        if is_remote_url(url):
-            print(f"Warning: Failed to download image for '{element_id}' from '{url}': {e}")
-        else:
-            print(f"Warning: Local image not found for '{element_id}': {url}")
-        return ""
-    except Exception as e:
-        print(f"Warning: Failed to get image for '{element_id}' from '{url}': {e}")
-        return ""
+    # Split by | or , for fallback URLs
+    urls = [u.strip() for u in re.split(r'[|,]', url) if u.strip()]
+    
+    last_error = None
+    for attempt_url in urls:
+        try:
+            image_bytes, mime_type = get_image(attempt_url)
+            return image_to_data_uri(image_bytes, mime_type)
+        except FileNotFoundError as e:
+            if is_remote_url(attempt_url):
+                last_error = f"Failed to download from '{attempt_url}': {e}"
+            else:
+                last_error = f"Local image not found: '{attempt_url}'"
+        except Exception as e:
+            last_error = f"Failed to get image from '{attempt_url}': {e}"
+    
+    print(f"Warning: Could not load image for '{element_id}' from any URL. Last error: {last_error}")
+    return ""
 
 
 def apply_image_to_element(element: etree.Element, attribute: str, data_uri: str) -> None:
