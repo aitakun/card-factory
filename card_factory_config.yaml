@@ -11,7 +11,7 @@ template:
 # Use | for OR logic: "hardware|gene" matches either
 filter:
   column: "type"
-  contains: "hardware|gene"
+  contains: "hardware|evento"
 
 # Bindings: map SVG element IDs to spreadsheet columns
 # Supported options:
@@ -45,7 +45,7 @@ bindings:
   # Image binding example - downloads and embeds card illustration
   - element_id: "illustration"
     attribute: "xlink:href"
-    value: "https://card-images.netrunnerdb.com/v2/xlarge/{NRDB_ID}.webp"
+    value: "https://card-images.netrunnerdb.com/v2/xlarge/{NRDB_ID}.webp|https://card-images.netrunnerdb.com/v2/large/{NRDB_ID}.jpg"
 
   - element_id: "faction-symbol"
     attribute: "xlink:href"
