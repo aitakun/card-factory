@@ -438,6 +438,9 @@ def resolve_url_template(url_template: str, row_data: Dict[str, Any], element_id
     
     Unlike text bindings, URLs should be returned as-is if they don't contain placeholders
     (rather than being looked up as column names).
+    
+    Supports transform tags: [uppercase]{field}[/uppercase], [lowercase]{field}[/lowercase]
+    Also supports shorthand: [uppercase]{field} (auto-closes at {field})
     """
     if not url_template:
         return ""
@@ -445,6 +448,38 @@ def resolve_url_template(url_template: str, row_data: Dict[str, Any], element_id
     if '{' not in url_template:
         return url_template
     
+    result = url_template
+    
+    # Pattern for closing tag format: [uppercase]{field}[/uppercase]
+    transform_pattern_closed = r'\[(uppercase|lowercase)\]\{([^}]+)\}\[/\1\]'
+    
+    # Pattern for shorthand format: [uppercase]{field} (auto-closes)
+    transform_pattern_shorthand = r'\[(uppercase|lowercase)\]\{([^}]+)\}'
+    
+    def replace_transform(match):
+        transform_type = match.group(1)
+        field_name = match.group(2)
+        
+        if field_name not in row_data:
+            print(f"Warning: Column '{field_name}' not found for element '{element_id}'")
+            return ""
+        
+        value = str(row_data.get(field_name, ""))
+        
+        if not value:
+            return ""
+        
+        if transform_type == "uppercase":
+            return value.upper()
+        elif transform_type == "lowercase":
+            return value.lower()
+        return value
+    
+    # Replace transform tags first (both formats)
+    result = re.sub(transform_pattern_closed, replace_transform, result)
+    result = re.sub(transform_pattern_shorthand, replace_transform, result)
+    
+    # Pattern to match simple field placeholders: {field_name}
     field_pattern = r'\{([^}]+)\}'
     
     def replace_field(match):
@@ -454,7 +489,7 @@ def resolve_url_template(url_template: str, row_data: Dict[str, Any], element_id
             return ""
         return str(row_data.get(field_name, ""))
     
-    return re.sub(field_pattern, replace_field, url_template)
+    return re.sub(field_pattern, replace_field, result)
 
 
 def download_and_embed_image(url: str, element_id: str) -> str:
