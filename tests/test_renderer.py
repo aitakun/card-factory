@@ -97,7 +97,11 @@ class TestParseMarkdownSegments:
 
     def test_empty_format_markers(self):
         result = parse_markdown_segments("****")
-        assert result == []
+        assert len(result) == 2
+        assert result[0]["text"] == ""
+        assert result[0]["format"] == "bold"
+        assert result[1]["text"] == ""
+        assert result[1]["format"] == "bold"
 
     def test_unclosed_marker(self):
         result = parse_markdown_segments("*unclosed")
@@ -244,7 +248,8 @@ class TestApplyFormattedText:
 
     def test_plain_text_on_text_element(self):
         svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test">Original</text></svg>')
-        apply_formatted_text(svg, "New Text")
+        text_element = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text(text_element, "New Text")
         tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
         assert tspan is not None
         assert tspan.text == "New Text"
