@@ -345,16 +345,6 @@ def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: 
     Returns the resolved string with all placeholders replaced.
     Warns on missing columns.
     """
-    # Check if template is just a simple field name (no { } or [ ] brackets)
-    if not re.search(r'[\{\}\[\]]', template):
-        # Simple field name - resolve directly
-        field_name = template
-        if field_name in row_data:
-            return str(row_data.get(field_name, ""))
-        else:
-            print(f"Warning: Column '{field_name}' not found for element '{element_id}'")
-            return ""
-    
     result = template
     
     # Pattern to match transform tags with field: [uppercase]{field}[/uppercase]

@@ -111,7 +111,7 @@ class TestResolveTemplateValue:
 
     def test_simple_field(self):
         row_data = {"name": "Sword", "cost": "5"}
-        result = resolve_template_value("name", row_data, "test_element")
+        result = resolve_template_value("{name}", row_data, "test_element")
         assert result == "Sword"
 
     def test_field_with_braces(self):

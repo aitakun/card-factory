@@ -24,7 +24,7 @@ filter:
 #     Images are downloaded, cached locally, and embedded as base64 blobs
 bindings:
   - element_id: "name"
-    value: "name"
+    value: "{name}"
 
   - element_id: "type"
     value: "[uppercase]{type}[/uppercase]"
@@ -34,13 +34,13 @@ bindings:
     prefix: " - "
 
   - element_id: "cost"
-    value: "cost"
+    value: "{cost}"
 
   - element_id: "text-body"
     value: "*{text}*\n\n_{flavor}_"
 
   - element_id: "illustrator"
-    value: "illustrator"
+    value: "{illustrator}"
 
   # Image binding example - downloads and embeds card illustration
   - element_id: "illustration"
