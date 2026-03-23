@@ -88,6 +88,10 @@ color_schemes:
       light-color: "#999999"
       lighter-color: "#cccccc"
 
+# Substitutions: used to display symbols in place of placeholders
+substitutions:
+  "[credit]": "$"
+
 # Output settings
 output:
   directory: "export"

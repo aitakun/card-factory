@@ -17,6 +17,7 @@ class CardFactoryConfig:
         self.bindings: List[Dict[str, Any]] = []
         self.visibility: List[Dict[str, Any]] = []
         self.color_schemes: Dict[str, Any] = {}
+        self.substitutions: Dict[str, str] = {}
         self.output_directory: str = "export"
         self.filename_pattern: str = "{name}.svg"
         
@@ -63,6 +64,10 @@ class CardFactoryConfig:
         if 'color_schemes' in config:
             self.color_schemes = config['color_schemes']
         
+        # Load substitutions
+        if 'substitutions' in config:
+            self.substitutions = config['substitutions']
+        
         # Load output settings
         if 'output' in config:
             output_config = config['output']
@@ -83,6 +88,10 @@ class CardFactoryConfig:
     def get_color_schemes(self) -> Dict[str, Any]:
         """Get color schemes configuration"""
         return self.color_schemes
+    
+    def get_substitutions(self) -> Dict[str, str]:
+        """Get string substitutions"""
+        return self.substitutions
     
     def get_filter(self) -> tuple:
         """Get filter settings as (column, contains) tuple"""

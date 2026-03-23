@@ -332,7 +332,7 @@ def apply_formatted_text(element: etree.Element, text: str) -> None:
     set_element_text_content(element, text)
 
 
-def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: str) -> str:
+def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: str, substitutions: Dict[str, str] = None) -> str:
     """
     Resolve a template string by replacing {field} placeholders with values from row_data.
     
@@ -342,9 +342,19 @@ def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: 
     
     If a field resolves to empty, surrounding text is also removed (e.g., ** becomes empty).
     
+    Substitutions (if provided) are applied after field replacement but before transforms.
+    
+    Processing order:
+    1. Replace {field} placeholders
+    2. Apply substitutions
+    3. Apply [uppercase]/[lowercase] transforms
+    
     Returns the resolved string with all placeholders replaced.
     Warns on missing columns.
     """
+    if substitutions is None:
+        substitutions = {}
+    
     result = template
     
     # Pattern to match transform tags with field: [uppercase]{field}[/uppercase]
@@ -361,7 +371,6 @@ def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: 
         value = str(row_data.get(field_name, ""))
         
         if not value:
-            # Field is empty, remove the entire tag including surrounding text
             return ""
         
         if transform_type == "uppercase":
@@ -370,7 +379,7 @@ def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: 
             return value.lower()
         return value
     
-    # Replace transform tags first
+    # Step 1: Apply transforms first (to handle normal transforms without substitutions)
     result = re.sub(transform_pattern, replace_transform, result)
     
     # Pattern to match simple field placeholders: {field_name}
@@ -385,16 +394,21 @@ def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: 
         
         return str(row_data.get(field_name, ""))
     
-    # Replace remaining field placeholders
+    # Step 2: Replace field placeholders
     result = re.sub(field_pattern, replace_field, result)
+    
+    # Step 3: Apply substitutions
+    for pattern, replacement in substitutions.items():
+        result = result.replace(pattern, replacement)
+    
+    # Step 4: Re-apply transforms to handle any transforms created by substitutions
+    result = re.sub(transform_pattern, replace_transform, result)
     
     # Remove formatting markers that resulted from empty fields
     # e.g., **** (from **empty**) should become empty, but **content** stays
-    # Match pairs of ** or __ where there's nothing between them
-    result = re.sub(r'\*\*\*\*+', '', result)  # **** or more
-    result = re.sub(r'______+', '', result)      # ____ or more
+    result = re.sub(r'\*\*\*\*+', '', result)
+    result = re.sub(r'______+', '', result)
     
-    # Clean up any extra whitespace/newlines from empty sections
     result = result.strip()
     
     return result
@@ -528,13 +542,17 @@ def apply_image_to_element(element: etree.Element, attribute: str, data_uri: str
         element.set(attribute, data_uri)
 
 
-def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any]) -> etree.ElementTree:
+def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any], substitutions: Dict[str, str] = None) -> etree.ElementTree:
     """Substitute values from row_data into template elements based on bindings.
     
     Resolution order:
     1. Inline ${binding_id} patterns in SVG elements
     2. Standard bindings by element ID
+    
+    substitutions: Optional dict of string replacements applied after field substitution
     """
+    if substitutions is None:
+        substitutions = {}
     
     # Step 1: Resolve inline ${id} patterns first
     resolved_bindings = resolve_inline_patterns(tree, bindings, row_data)
@@ -568,7 +586,7 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
             continue
         
         # Text binding (default behavior)
-        value = resolve_template_value(template_value, row_data, element_id)
+        value = resolve_template_value(template_value, row_data, element_id, substitutions)
         
         # Apply prefix if specified and value is not empty
         prefix = binding.get("prefix")

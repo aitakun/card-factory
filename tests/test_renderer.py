@@ -14,6 +14,7 @@ from card_factory.templates.renderer import (
     resolve_url_template,
     evaluate_condition,
     apply_formatted_text,
+    apply_markdown_within_tspan,
 )
 
 
@@ -103,6 +104,93 @@ class TestParseMarkdownSegments:
         assert result[1]["text"] == ""
         assert result[1]["format"] == "bold"
 
+    def test_bold_resumes_after_nested_heavy(self):
+        result = parse_markdown_segments("*bold !heavy! bold again*")
+        assert len(result) == 1
+        assert result[0]["format"] == "bold"
+        assert len(result[0]["content"]) == 3
+        assert result[0]["content"][0]["text"] == "bold "
+        assert result[0]["content"][0]["format"] is None
+        assert result[0]["content"][1]["text"] == "heavy"
+        assert result[0]["content"][1]["format"] == "heavy"
+        assert result[0]["content"][2]["text"] == " bold again"
+        assert result[0]["content"][2]["format"] is None
+
+    def test_italic_with_bold_inside(self):
+        result = parse_markdown_segments("_italic *bold italic* plain_")
+        assert len(result) == 1
+        assert result[0]["format"] == "italic"
+        assert len(result[0]["content"]) == 3
+        assert result[0]["content"][0]["text"] == "italic "
+        assert result[0]["content"][0]["format"] is None
+        assert result[0]["content"][1]["text"] == "bold italic"
+        assert result[0]["content"][1]["format"] == "bold"
+        assert result[0]["content"][2]["text"] == " plain"
+        assert result[0]["content"][2]["format"] is None
+
+    def test_heavy_with_bold_inside(self):
+        result = parse_markdown_segments("!heavy *bold heavy* plain!")
+        assert len(result) == 1
+        assert result[0]["format"] == "heavy"
+        assert len(result[0]["content"]) == 3
+        assert result[0]["content"][0]["text"] == "heavy "
+        assert result[0]["content"][0]["format"] is None
+        assert result[0]["content"][1]["text"] == "bold heavy"
+        assert result[0]["content"][1]["format"] == "bold"
+        assert result[0]["content"][2]["text"] == " plain"
+        assert result[0]["content"][2]["format"] is None
+
+    def test_plain_surrounding_nested_format(self):
+        result = parse_markdown_segments("before *bold _italic_ bold* after")
+        assert len(result) == 3
+        assert result[0]["text"] == "before "
+        assert result[0]["format"] is None
+        assert result[1]["format"] == "bold"
+        assert len(result[1]["content"]) == 3
+        assert result[1]["content"][0]["text"] == "bold "
+        assert result[1]["content"][1]["text"] == "italic"
+        assert result[1]["content"][1]["format"] == "italic"
+        assert result[1]["content"][2]["text"] == " bold"
+        assert result[2]["text"] == " after"
+        assert result[2]["format"] is None
+
+    def test_multiple_alternating_nested_in_bold(self):
+        result = parse_markdown_segments("*!heavy! and _italic_ and !heavy! and _italic_*")
+        assert len(result) == 1
+        assert result[0]["format"] == "bold"
+        assert len(result[0]["content"]) == 7
+        assert result[0]["content"][0]["text"] == "heavy"
+        assert result[0]["content"][0]["format"] == "heavy"
+        assert result[0]["content"][1]["text"] == " and "
+        assert result[0]["content"][1]["format"] is None
+        assert result[0]["content"][2]["text"] == "italic"
+        assert result[0]["content"][2]["format"] == "italic"
+        assert result[0]["content"][3]["text"] == " and "
+        assert result[0]["content"][3]["format"] is None
+        assert result[0]["content"][4]["text"] == "heavy"
+        assert result[0]["content"][4]["format"] == "heavy"
+        assert result[0]["content"][5]["text"] == " and "
+        assert result[0]["content"][5]["format"] is None
+        assert result[0]["content"][6]["text"] == "italic"
+        assert result[0]["content"][6]["format"] == "italic"
+
+    def test_triple_nesting_bold_italic_heavy(self):
+        result = parse_markdown_segments("*bold _italic !heavy! italic_ bold*")
+        assert len(result) == 1
+        assert result[0]["format"] == "bold"
+        assert len(result[0]["content"]) == 3
+        assert result[0]["content"][0]["text"] == "bold "
+        assert result[0]["content"][1]["format"] == "italic"
+        assert len(result[0]["content"][1]["content"]) == 3
+        assert result[0]["content"][1]["content"][0]["text"] == "italic "
+        assert result[0]["content"][1]["content"][0]["format"] is None
+        assert result[0]["content"][1]["content"][1]["text"] == "heavy"
+        assert result[0]["content"][1]["content"][1]["format"] == "heavy"
+        assert result[0]["content"][1]["content"][2]["text"] == " italic"
+        assert result[0]["content"][1]["content"][2]["format"] is None
+        assert result[0]["content"][2]["text"] == " bold"
+        assert result[0]["content"][2]["format"] is None
+
     def test_unclosed_marker(self):
         result = parse_markdown_segments("*unclosed")
         assert len(result) == 1
@@ -152,6 +240,53 @@ class TestResolveTemplateValue:
         row_data = {"name": "Sword"}
         result = resolve_template_value("Static Text", row_data, "test_element")
         assert result == "Static Text"
+
+    def test_simple_substitution(self):
+        row_data = {"column_1": "baz"}
+        substitutions = {"[symbol]": "☆☆"}
+        result = resolve_template_value("{column_1} [symbol]", row_data, "test_element", substitutions)
+        assert result == "baz ☆☆"
+
+    def test_substitution_in_column_value(self):
+        row_data = {"column_1": "baz [symbol] bar"}
+        substitutions = {"[symbol]": "☆☆"}
+        result = resolve_template_value("{column_1}", row_data, "test_element", substitutions)
+        assert result == "baz ☆☆ bar"
+
+    def test_multiple_substitutions(self):
+        row_data = {"name": "test"}
+        substitutions = {"[star]": "★", "[heart]": "♥"}
+        result = resolve_template_value("{name} [star] and [heart]", row_data, "test_element", substitutions)
+        assert result == "test ★ and ♥"
+
+    def test_substitution_before_markdown(self):
+        row_data = {"text": "value"}
+        substitutions = {"[symbol]": "☆☆"}
+        result = resolve_template_value("*{text} [symbol]*", row_data, "test_element", substitutions)
+        assert result == "*value ☆☆*"
+
+    def test_substitution_before_uppercase(self):
+        row_data = {"name": "test"}
+        substitutions = {"[suffix]": " [suffix]", "[suffix]": " SUFFIX"}
+        result = resolve_template_value("{name}[suffix]", row_data, "test_element", substitutions)
+        assert result == "test SUFFIX"
+
+    def test_substitution_before_lowercase(self):
+        row_data = {"name": "TEST"}
+        substitutions = {"[suffix]": " [suffix]", "[suffix]": " suffix"}
+        result = resolve_template_value("[lowercase]{name}[/lowercase][suffix]", row_data, "test_element", substitutions)
+        assert result == "test suffix"
+
+    def test_no_substitutions(self):
+        row_data = {"name": "Sword"}
+        result = resolve_template_value("{name}", row_data, "test_element")
+        assert result == "Sword"
+
+    def test_substitution_not_found(self):
+        row_data = {"name": "Sword"}
+        substitutions = {"[other]": "☆"}
+        result = resolve_template_value("{name} [symbol]", row_data, "test_element", substitutions)
+        assert result == "Sword [symbol]"
 
 
 class TestResolveUrlTemplate:
@@ -259,3 +394,137 @@ class TestApplyFormattedText:
         tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
         apply_formatted_text(tspan, "New Text")
         assert tspan.text == "New Text"
+
+    def test_bold_creates_nested_tspan(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "*bold text*")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 2
+        parent = all_tspans[0]
+        nested = all_tspans[1]
+        assert parent.get("id") == "inner"
+        assert nested.get("font-weight") == "bold"
+        assert nested.text == "bold text"
+
+    def test_italic_creates_nested_tspan(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "_italic text_")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 2
+        nested = all_tspans[1]
+        assert nested.get("font-style") == "italic"
+        assert nested.text == "italic text"
+
+    def test_heavy_creates_nested_tspan(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "!heavy text!")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 2
+        nested = all_tspans[1]
+        assert nested.get("font-weight") == "900"
+        assert nested.text == "heavy text"
+
+    def test_plain_text_replaces_parent_text(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "plain text")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 1
+        assert all_tspans[0].text == "plain text"
+        assert all_tspans[0].get("font-weight") is None
+        assert all_tspans[0].get("font-style") is None
+
+    def test_nested_bold_with_italic_creates_deep_hierarchy(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "*bold _italic_*")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 4
+        assert all_tspans[1].get("font-weight") == "bold"
+        assert all_tspans[3].get("font-style") == "italic"
+
+    def test_multiple_formats_creates_sibling_tspans(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "*bold* and _italic_ and !heavy!")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 6
+        assert all_tspans[1].get("font-weight") == "bold"
+        assert all_tspans[3].get("font-style") == "italic"
+        assert all_tspans[5].get("font-weight") == "900"
+
+    def test_triple_nesting_creates_deep_hierarchy(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "*bold _italic !heavy! italic_ bold*")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 8
+        assert all_tspans[1].get("font-weight") == "bold"
+        assert all_tspans[3].get("font-style") == "italic"
+        assert all_tspans[5].get("font-weight") == "900"
+
+    def test_base_attributes_preserved_on_nested(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner" font-family="Arial" font-size="12">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "*bold text*")
+        nested = svg.findall(".//{http://www.w3.org/2000/svg}tspan")[1]
+        assert nested.get("font-family") == "Arial"
+        assert nested.get("font-size") == "12"
+        assert nested.get("font-weight") == "bold"
+
+    def test_plain_surrounding_formatted(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "before *bold* after")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert all_tspans[1].text == "before "
+        assert all_tspans[2].get("font-weight") == "bold"
+        assert all_tspans[2].text == "bold"
+        assert all_tspans[3].text == " after"
+
+
+class TestApplyFormattedTextIntegration:
+    """Integration tests for apply_formatted_text() on text elements"""
+
+    def test_text_element_with_bold(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text(text_elem, "*bold* and plain")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 3
+        assert all_tspans[1].get("font-weight") == "bold"
+        assert all_tspans[1].text == "bold"
+        assert all_tspans[2].text == " and plain"
+
+    def test_text_element_with_nested_formats(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text(text_elem, "*bold _italic_ bold*")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 5
+        assert all_tspans[1].get("font-weight") == "bold"
+        assert all_tspans[3].get("font-style") == "italic"
+        assert all_tspans[3].text == "italic"
+
+    def test_text_element_with_existing_tspan(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Old text</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text(text_elem, "*new bold*")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 2
+        assert all_tspans[1].text == "new bold"
+        assert all_tspans[1].get("font-weight") == "bold"
+
+    def test_complex_text_with_all_formats(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text(text_elem, "*bold* and _italic_ and !heavy! and plain")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 7
+        assert all_tspans[1].get("font-weight") == "bold"
+        assert all_tspans[3].get("font-style") == "italic"
+        assert all_tspans[5].get("font-weight") == "900"
+        assert all_tspans[6].text == " and plain"

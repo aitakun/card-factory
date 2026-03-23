@@ -104,7 +104,10 @@ class CardBindingEngine:
         
         # Render template with data bindings
         bindings = self.get_bindings()
-        tree = render_template(tree, bindings, row_data)
+        substitutions = {}
+        if self.config and hasattr(self.config, 'get_substitutions'):
+            substitutions = self.config.get_substitutions()
+        tree = render_template(tree, bindings, row_data, substitutions)
         
         # Apply color schemes
         if self.config and hasattr(self.config, 'get_color_schemes'):

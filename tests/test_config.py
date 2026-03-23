@@ -109,6 +109,26 @@ output:
         config.filter_contains = "weapon"
         assert config.get_filter() == ("type", "weapon")
 
+    def test_get_substitutions(self):
+        config = CardFactoryConfig()
+        config.substitutions = {"[symbol]": "☆☆", "[star]": "★"}
+        assert config.get_substitutions() == {"[symbol]": "☆☆", "[star]": "★"}
+
+    def test_load_substitutions_from_config(self):
+        config_content = """
+template: template/test.svg
+substitutions:
+  "[symbol]": "☆☆"
+  "[star]": "★"
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(config_content)
+            f.flush()
+            config = CardFactoryConfig(f.name)
+
+        assert config.get_substitutions() == {"[symbol]": "☆☆", "[star]": "★"}
+        os.unlink(f.name)
+
 
 class TestShouldIncludeRow:
     """Tests for should_include_row() method"""
