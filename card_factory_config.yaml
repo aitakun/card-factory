@@ -11,7 +11,7 @@ template:
 # Use | for OR logic: "hardware|gene" matches either
 filter:
   column: "type"
-  contains: "hardware|evento"
+  contains: "hardware|evento|programma"
 
 # Bindings: map SVG element IDs to spreadsheet columns
 # Supported options:
@@ -31,13 +31,20 @@ bindings:
 
   - element_id: "subtypes"
     value: "{subtypes}"
-    prefix: " - "
+    prefix: ": "
 
   - element_id: "cost"
     value: "{cost}"
 
+  - element_id: "mu"
+    value: "{mu}"
+
+  - element_id: "strength"
+    value: "{strength}"
+
   - element_id: "text-body"
-    value: "*{text}*\n\n_{flavor}_"
+    value: "*{text}*\n_{flavor}_"
+    paragraph_spacing: 0.1
 
   - element_id: "illustrator"
     value: "{illustrator}"
