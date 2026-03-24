@@ -437,6 +437,181 @@ def set_element_text_content(element: etree.Element, new_text: str) -> None:
     element.text = new_text
 
 
+def wrap_paragraphs_in_tspans(element: etree.Element, value: str) -> None:
+    """Split text by newlines and wrap each paragraph in a high-level tspan.
+    
+    This should be called AFTER apply_formatted_text has created the markdown tspans.
+    Each paragraph gets wrapped in a tspan with data-paragraph-index attribute.
+    
+    The original tspans are removed and replaced with paragraph-wrapped versions,
+    preserving the nested markdown formatting.
+    """
+    paragraphs = value.split('\n')
+    num_paragraphs = len(paragraphs)
+    
+    if num_paragraphs <= 1:
+        return
+    
+    if element.tag != f"{SVG_NS}text":
+        return
+    
+    existing_tspans = list(element.findall(f"{SVG_NS}tspan"))
+    
+    if not existing_tspans:
+        return
+    
+    def extract_plain_text(troot):
+        """Extract plain text from a tspan element including nested tspans."""
+        parts = []
+        if troot.text:
+            parts.append(troot.text)
+        for child in troot:
+            parts.append(extract_plain_text(child))
+            if child.tail:
+                parts.append(child.tail)
+        return ''.join(parts)
+    
+    tspan_texts = [extract_plain_text(ts) for ts in existing_tspans]
+    
+    paragraph_tspans = []
+    for p_idx in range(num_paragraphs):
+        p_tspan = etree.SubElement(element, f"{SVG_NS}tspan")
+        p_tspan.set("data-paragraph-index", str(p_idx))
+        p_tspan.set("fill-opacity", "0")
+        paragraph_tspans.append(p_tspan)
+    
+    current_paragraph = 0
+    
+    for tidx, tspan in enumerate(existing_tspans):
+        tspan_text = tspan_texts[tidx]
+        
+        if not tspan_text:
+            if current_paragraph < num_paragraphs:
+                for attr, val in tspan.attrib.items():
+                    if attr != "id" and attr != "data-paragraph-index":
+                        paragraph_tspans[current_paragraph].set(attr, val)
+            continue
+        
+        lines = tspan_text.split('\n')
+        
+        for line_idx, line in enumerate(lines):
+            if current_paragraph >= num_paragraphs:
+                break
+            
+            if line_idx > 0:
+                current_paragraph += 1
+                if current_paragraph >= num_paragraphs:
+                    break
+            
+            new_inner = etree.SubElement(paragraph_tspans[current_paragraph], f"{SVG_NS}tspan")
+            
+            for attr, val in tspan.attrib.items():
+                if attr != "id" and attr != "data-paragraph-index":
+                    new_inner.set(attr, val)
+            
+            new_inner.text = line
+            
+            for child in list(tspan):
+                new_inner.append(child)
+                child.tail = None
+    
+    for tspan in existing_tspans:
+        element.remove(tspan)
+    
+    element.text = None
+
+
+def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, paragraph_spacing: int) -> None:
+    """Apply paragraph spacing workaround for Inkscape.
+    
+    Since Inkscape doesn't support proper paragraph spacing, we create copies
+    of the text element - one for each paragraph - and translate them vertically.
+    Only the tspan for the current paragraph is shown in each copy.
+    
+    Steps:
+    1. Find all paragraph tspans (identified by data-paragraph-index attribute)
+    2. Count paragraphs
+    3. Clone the <text> element N-1 more times (N = number of paragraphs)
+    4. Translate each copy down by index * paragraph_spacing
+    5. In each copy, set display="none" on all paragraph tspans except matching index
+    """
+    if element.tag != f"{SVG_NS}text":
+        return
+    
+    paragraph_tspans = element.findall(f"{SVG_NS}tspan[@data-paragraph-index]")
+    
+    if not paragraph_tspans:
+        return
+    
+    num_paragraphs = len(set(tspan.get("data-paragraph-index") for tspan in paragraph_tspans))
+    
+    if num_paragraphs <= 1 or paragraph_spacing <= 0:
+        return
+    
+    for p_tspan in paragraph_tspans:
+        p_tspan.set("fill-opacity", "0")
+    
+    if paragraph_tspans:
+        if paragraph_tspans[0].get("fill-opacity") == "0":
+            del paragraph_tspans[0].attrib["fill-opacity"]
+    
+    for idx in range(1, num_paragraphs):
+        cloned = etree.fromstring(etree.tostring(element))
+        
+        existing_id = cloned.get("id")
+        if existing_id:
+            cloned.set("id", f"{existing_id}-{idx}")
+        
+        existing_transform = element.get("transform")
+        new_transform = modify_translate_y(existing_transform, idx * paragraph_spacing)
+        cloned.set("transform", new_transform)
+        
+        cloned_paragraphs = cloned.findall(f"{SVG_NS}tspan[@data-paragraph-index]")
+        
+        for p_idx, p_tspan in enumerate(cloned_paragraphs):
+            if p_tspan.get("data-paragraph-index") == str(idx):
+                if p_tspan.get("fill-opacity") == "0":
+                    del p_tspan.attrib["fill-opacity"]
+            else:
+                p_tspan.set("fill-opacity", "0")
+        
+        parent = element.getparent()
+        parent.append(cloned)
+
+
+def modify_translate_y(existing_transform: str, delta_y: float) -> str:
+    """Modify the translateY component of a transform attribute.
+    
+    Supports:
+    - transform="translate(x,y)"
+    - transform="matrix(a,b,c,d,e,f)" - extracts and modifies the e/f components
+    
+    Returns the modified transform string.
+    """
+    def format_num(n):
+        if n == int(n):
+            return str(int(n))
+        return str(n)
+    
+    if not existing_transform:
+        return f"translate(0,{format_num(delta_y)})"
+    
+    translate_match = re.match(r'translate\s*\(\s*([^,)]+)\s*,\s*([^)]+)\s*\)', existing_transform, re.IGNORECASE)
+    if translate_match:
+        x = float(translate_match.group(1))
+        y = float(translate_match.group(2))
+        new_y = y + delta_y
+        return f"translate({format_num(x)},{format_num(new_y)})"
+    
+    matrix_match = re.match(r'matrix\s*\(\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^)]+)\s*\)', existing_transform)
+    if matrix_match:
+        a, b, c, d, e, f = matrix_match.groups()
+        new_f = float(f) + delta_y
+        return f"matrix({a},{b},{c},{d},{e},{format_num(new_f)})"
+    
+    return f"translate(0,{format_num(delta_y)})"
+
+
 def resolve_url_template(url_template: str, row_data: Dict[str, Any], element_id: str) -> str:
     """Resolve URL template by replacing {field} placeholders with values from row_data.
     
@@ -595,6 +770,12 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
         
         # Apply formatted text to element (with markdown support)
         apply_formatted_text(element, value)
+        
+        # Apply paragraph spacing if specified
+        paragraph_spacing = binding.get("paragraph_spacing")
+        if paragraph_spacing and isinstance(paragraph_spacing, int) and paragraph_spacing > 0:
+            wrap_paragraphs_in_tspans(element, value)
+            apply_paragraph_spacing(tree, element, paragraph_spacing)
     
     return tree
 
