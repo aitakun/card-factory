@@ -47,7 +47,7 @@ bindings:
 
   - element_id: "text-body"
     value: "{text}\n_{flavor}_"
-    paragraph_spacing: 4
+    paragraph_spacing: 1
 
   - element_id: "illustrator"
     value: "{illustrator}"

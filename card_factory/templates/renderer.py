@@ -381,6 +381,11 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
         segments = parse_markdown_segments(paragraph_text)
         needs_formatting = any(s.get("format") is not None for s in segments)
         
+        # Add newline to paragraph wrapper to create vertical spacing (except first and last)
+        # First paragraph starts at original position, subsequent ones need newlines
+        if p_idx > 0 and p_idx < num_paragraphs - 1:
+            p_tspan.text = "\n"
+        
         if not needs_formatting:
             # No markdown formatting - create simple tspan
             inner_tspan = etree.SubElement(p_tspan, f"{SVG_NS}tspan")

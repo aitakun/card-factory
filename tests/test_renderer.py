@@ -579,6 +579,45 @@ class TestApplyFormattedTextWithParagraphs:
         inner1 = children[1][0]
         assert inner1.get("font-style") == "italic"
 
+    def test_paragraph_wrapper_has_newline_for_spacing(self):
+        """Paragraph wrapper tspans should have newline characters for vertical spacing (not on first)."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
+        children = list(text_elem)
+        # First paragraph should NOT have newline (starts at original position)
+        assert children[0].text is None
+        # Last paragraph should NOT have trailing newline
+        assert children[1].text is None
+
+    def test_three_paragraphs_have_correct_newlines(self):
+        """Three paragraphs: first has none, middle has newline, last has none."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "A\nB\nC", 10)
+        children = list(text_elem)
+        assert len(children) == 3
+        # First: no newline (starts at original position)
+        assert children[0].text is None
+        # Middle: has newline (pushes next paragraph down)
+        assert children[1].text == "\n"
+        # Last: no trailing newline
+        assert children[2].text is None
+
+    def test_newline_in_markdown_paragraphs(self):
+        """Markdown paragraphs should also have newlines for spacing (not on first)."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "*Bold*\n_Italic_", 10)
+        children = list(text_elem)
+        # First: no newline
+        assert children[0].text is None
+        # Last: no trailing newline
+        assert children[1].text is None
+
     def test_no_orphan_tspans_without_paragraph_index(self):
         """Verify all DIRECT child tspans of text element have data-paragraph-index."""
         from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
