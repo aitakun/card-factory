@@ -530,36 +530,64 @@ class TestApplyFormattedTextIntegration:
         assert all_tspans[6].text == " and plain"
 
 
-class TestWrapParagraphsInTspans:
-    """Tests for wrap_paragraphs_in_tspans()"""
+class TestApplyFormattedTextWithParagraphs:
+    """Tests for apply_formatted_text_with_paragraphs()"""
 
-    def test_single_paragraph_no_change(self):
-        from card_factory.templates.renderer import wrap_paragraphs_in_tspans
-        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Single line</tspan></text></svg>')
+    def test_single_paragraph_creates_one_tspan(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
         text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
-        wrap_paragraphs_in_tspans(text_elem, "Single line")
-        p_tspans = text_elem.findall(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index]")
-        assert len(p_tspans) == 0
+        apply_formatted_text_with_paragraphs(text_elem, "Single line", 10)
+        children = list(text_elem)
+        assert len(children) == 1
 
-    def test_multiple_paragraphs_creates_paragraph_tspans(self):
-        from card_factory.templates.renderer import wrap_paragraphs_in_tspans
-        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Line 1</tspan></text></svg>')
+    def test_multiple_paragraphs_creates_correct_count(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
         text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
-        wrap_paragraphs_in_tspans(text_elem, "Line 1\nLine 2\nLine 3")
-        p_tspans = text_elem.findall(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index]")
-        assert len(p_tspans) == 3
-        assert p_tspans[0].get("data-paragraph-index") == "0"
-        assert p_tspans[1].get("data-paragraph-index") == "1"
-        assert p_tspans[2].get("data-paragraph-index") == "2"
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2\nLine 3", 10)
+        children = list(text_elem)
+        assert len(children) == 3
 
-    def test_paragraphs_have_fill_opacity_zero(self):
-        from card_factory.templates.renderer import wrap_paragraphs_in_tspans
-        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Line 1</tspan></text></svg>')
+    def test_paragraphs_have_correct_indices(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
         text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
-        wrap_paragraphs_in_tspans(text_elem, "Line 1\nLine 2")
-        p_tspans = text_elem.findall(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index]")
-        assert p_tspans[0].get("fill-opacity") == "0"
-        assert p_tspans[1].get("fill-opacity") == "0"
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
+        children = list(text_elem)
+        assert children[0].get("data-paragraph-index") == "0"
+        assert children[1].get("data-paragraph-index") == "1"
+
+    def test_first_paragraph_visible_others_hidden(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
+        children = list(text_elem)
+        assert children[0].get("fill-opacity") is None
+        assert children[1].get("fill-opacity") == "0"
+
+    def test_markdown_preserved_with_paragraphs(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "*Bold*\n_Italic_", 10)
+        children = list(text_elem)
+        assert len(children) == 2
+        inner0 = children[0][0]
+        assert inner0.get("font-weight") == "bold"
+        inner1 = children[1][0]
+        assert inner1.get("font-style") == "italic"
+
+    def test_no_orphan_tspans_without_paragraph_index(self):
+        """Verify no tspans without data-paragraph-index remain after processing."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
+        all_tspans = text_elem.findall(".//{http://www.w3.org/2000/svg}tspan")
+        for ts in all_tspans:
+            assert ts.get("data-paragraph-index") is not None
 
 
 class TestApplyParagraphSpacing:

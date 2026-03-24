@@ -332,6 +332,98 @@ def apply_formatted_text(element: etree.Element, text: str) -> None:
     set_element_text_content(element, text)
 
 
+def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, paragraph_spacing: int) -> None:
+    """
+    Apply text to element with markdown formatting AND paragraph support.
+    
+    This function builds the entire tspan tree in one go:
+    - text element
+      - paragraph_tspan (data-paragraph-index="0", fill-opacity="0" or None)
+        - markdown_tspan (with formatting from *bold*, _italic_, !heavy!)
+          - text content
+      - paragraph_tspan (data-paragraph-index="1", fill-opacity="0")
+        - ...
+    
+    This avoids the complexity of trying to wrap existing tspans after they're created.
+    """
+    if element.tag != f"{SVG_NS}text":
+        set_element_text_content(element, text)
+        return
+    
+    paragraphs = text.split('\n')
+    num_paragraphs = len(paragraphs)
+    
+    # Clear existing content
+    element.text = None
+    for child in list(element):
+        element.remove(child)
+    
+    for p_idx in range(num_paragraphs):
+        paragraph_text = paragraphs[p_idx]
+        
+        # Create paragraph wrapper tspan
+        p_tspan = etree.SubElement(element, f"{SVG_NS}tspan")
+        p_tspan.set("data-paragraph-index", str(p_idx))
+        
+        # First paragraph is visible, others hidden
+        if p_idx > 0:
+            p_tspan.set("fill-opacity", "0")
+        
+        # Get base attributes from existing tspan if present
+        base_tspan = element.find(f"{SVG_NS}tspan")
+        base_attrs = {}
+        if base_tspan is not None:
+            for attr, val in base_tspan.attrib.items():
+                if attr not in ('id',):
+                    base_attrs[attr] = val
+        
+        # Parse markdown and create nested tspans for this paragraph
+        segments = parse_markdown_segments(paragraph_text)
+        needs_formatting = any(s.get("format") is not None for s in segments)
+        
+        if not needs_formatting:
+            # No markdown formatting - create simple tspan
+            inner_tspan = etree.SubElement(p_tspan, f"{SVG_NS}tspan")
+            for attr, val in base_attrs.items():
+                inner_tspan.set(attr, val)
+            inner_tspan.text = paragraph_text
+        else:
+            # Has markdown - create nested tspans recursively
+            def create_nested_tspan(parent_tspan, segment, parent_format=None):
+                fmt = segment.get("format")
+                content = segment.get("content")
+                
+                font_weight = None
+                font_style = None
+                
+                if fmt == "heavy":
+                    font_weight = "900"
+                elif fmt == "bold":
+                    font_weight = "bold"
+                elif fmt == "italic":
+                    font_style = "italic"
+                
+                nested = etree.SubElement(parent_tspan, f"{SVG_NS}tspan")
+                
+                for attr, val in base_attrs.items():
+                    if attr not in ('font-weight', 'font-style'):
+                        nested.set(attr, val)
+                
+                if font_weight:
+                    nested.set("font-weight", font_weight)
+                if font_style:
+                    nested.set("font-style", font_style)
+                
+                if content is not None:
+                    for child_seg in content:
+                        create_nested_tspan(nested, child_seg, fmt)
+                else:
+                    nested.text = segment.get("text", "")
+            
+            for segment in segments:
+                create_nested_tspan(p_tspan, segment)
+
+
 def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: str, substitutions: Dict[str, str] = None) -> str:
     """
     Resolve a template string by replacing {field} placeholders with values from row_data.
@@ -435,90 +527,6 @@ def set_element_text_content(element: etree.Element, new_text: str) -> None:
         element.remove(child)
     
     element.text = new_text
-
-
-def wrap_paragraphs_in_tspans(element: etree.Element, value: str) -> None:
-    """Split text by newlines and wrap each paragraph in a high-level tspan.
-    
-    This should be called AFTER apply_formatted_text has created the markdown tspans.
-    Each paragraph gets wrapped in a tspan with data-paragraph-index attribute.
-    
-    The original tspans are removed and replaced with paragraph-wrapped versions,
-    preserving the nested markdown formatting.
-    """
-    paragraphs = value.split('\n')
-    num_paragraphs = len(paragraphs)
-    
-    if num_paragraphs <= 1:
-        return
-    
-    if element.tag != f"{SVG_NS}text":
-        return
-    
-    existing_tspans = list(element.findall(f"{SVG_NS}tspan"))
-    
-    if not existing_tspans:
-        return
-    
-    def extract_plain_text(troot):
-        """Extract plain text from a tspan element including nested tspans."""
-        parts = []
-        if troot.text:
-            parts.append(troot.text)
-        for child in troot:
-            parts.append(extract_plain_text(child))
-            if child.tail:
-                parts.append(child.tail)
-        return ''.join(parts)
-    
-    tspan_texts = [extract_plain_text(ts) for ts in existing_tspans]
-    
-    paragraph_tspans = []
-    for p_idx in range(num_paragraphs):
-        p_tspan = etree.SubElement(element, f"{SVG_NS}tspan")
-        p_tspan.set("data-paragraph-index", str(p_idx))
-        p_tspan.set("fill-opacity", "0")
-        paragraph_tspans.append(p_tspan)
-    
-    current_paragraph = 0
-    
-    for tidx, tspan in enumerate(existing_tspans):
-        tspan_text = tspan_texts[tidx]
-        
-        if not tspan_text:
-            if current_paragraph < num_paragraphs:
-                for attr, val in tspan.attrib.items():
-                    if attr != "id" and attr != "data-paragraph-index":
-                        paragraph_tspans[current_paragraph].set(attr, val)
-            continue
-        
-        lines = tspan_text.split('\n')
-        
-        for line_idx, line in enumerate(lines):
-            if current_paragraph >= num_paragraphs:
-                break
-            
-            if line_idx > 0:
-                current_paragraph += 1
-                if current_paragraph >= num_paragraphs:
-                    break
-            
-            new_inner = etree.SubElement(paragraph_tspans[current_paragraph], f"{SVG_NS}tspan")
-            
-            for attr, val in tspan.attrib.items():
-                if attr != "id" and attr != "data-paragraph-index":
-                    new_inner.set(attr, val)
-            
-            new_inner.text = line
-            
-            for child in list(tspan):
-                new_inner.append(child)
-                child.tail = None
-    
-    for tspan in existing_tspans:
-        element.remove(tspan)
-    
-    element.text = None
 
 
 def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, paragraph_spacing: int) -> None:
@@ -769,13 +777,13 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
             value = prefix + value
         
         # Apply formatted text to element (with markdown support)
-        apply_formatted_text(element, value)
-        
-        # Apply paragraph spacing if specified
         paragraph_spacing = binding.get("paragraph_spacing")
         if paragraph_spacing and isinstance(paragraph_spacing, int) and paragraph_spacing > 0:
-            wrap_paragraphs_in_tspans(element, value)
+            # Use new function that builds entire tspan tree at once
+            apply_formatted_text_with_paragraphs(element, value, paragraph_spacing)
             apply_paragraph_spacing(tree, element, paragraph_spacing)
+        else:
+            apply_formatted_text(element, value)
     
     return tree
 
