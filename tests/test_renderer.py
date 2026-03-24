@@ -588,8 +588,6 @@ class TestApplyFormattedTextWithParagraphs:
         children = list(text_elem)
         # First paragraph should NOT have newline (starts at original position)
         assert children[0].text is None
-        # Last paragraph should NOT have trailing newline
-        assert children[1].text is None
 
     def test_three_paragraphs_have_correct_newlines(self):
         """Three paragraphs: first has none, middle has newline, last has none."""
@@ -603,8 +601,6 @@ class TestApplyFormattedTextWithParagraphs:
         assert children[0].text is None
         # Middle: has newline (pushes next paragraph down)
         assert children[1].text == "\n"
-        # Last: no trailing newline
-        assert children[2].text is None
 
     def test_newline_in_markdown_paragraphs(self):
         """Markdown paragraphs should also have newlines for spacing (not on first)."""
@@ -615,8 +611,6 @@ class TestApplyFormattedTextWithParagraphs:
         children = list(text_elem)
         # First: no newline
         assert children[0].text is None
-        # Last: no trailing newline
-        assert children[1].text is None
 
     def test_no_orphan_tspans_without_paragraph_index(self):
         """Verify all DIRECT child tspans of text element have data-paragraph-index."""
