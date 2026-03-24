@@ -528,3 +528,304 @@ class TestApplyFormattedTextIntegration:
         assert all_tspans[3].get("font-style") == "italic"
         assert all_tspans[5].get("font-weight") == "900"
         assert all_tspans[6].text == " and plain"
+
+
+class TestApplyFormattedTextWithParagraphs:
+    """Tests for apply_formatted_text_with_paragraphs()"""
+
+    def test_single_paragraph_creates_one_tspan(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Single line", 10)
+        children = list(text_elem)
+        assert len(children) == 1
+
+    def test_multiple_paragraphs_creates_correct_count(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2\nLine 3", 10)
+        children = list(text_elem)
+        assert len(children) == 3
+
+    def test_paragraphs_have_correct_indices(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
+        children = list(text_elem)
+        assert children[0].get("data-paragraph-index") == "0"
+        assert children[1].get("data-paragraph-index") == "1"
+
+    def test_first_paragraph_visible_others_hidden(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
+        children = list(text_elem)
+        assert children[0].get("fill-opacity") is None
+        assert children[1].get("fill-opacity") == "0"
+
+    def test_markdown_preserved_with_paragraphs(self):
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "*Bold*\n_Italic_", 10)
+        children = list(text_elem)
+        assert len(children) == 2
+        inner0 = children[0][0]
+        assert inner0.get("font-weight") == "bold"
+        inner1 = children[1][0]
+        assert inner1.get("font-style") == "italic"
+
+    def test_paragraph_wrapper_has_newline_for_spacing(self):
+        """Paragraph wrapper tspans should have newline characters for vertical spacing (not on first)."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
+        children = list(text_elem)
+        # First paragraph should NOT have newline (starts at original position)
+        assert children[0].text is None
+        # Last paragraph should NOT have trailing newline
+        assert children[1].text is None
+
+    def test_three_paragraphs_have_correct_newlines(self):
+        """Three paragraphs: first has none, middle has newline, last has none."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "A\nB\nC", 10)
+        children = list(text_elem)
+        assert len(children) == 3
+        # First: no newline (starts at original position)
+        assert children[0].text is None
+        # Middle: has newline (pushes next paragraph down)
+        assert children[1].text == "\n"
+        # Last: no trailing newline
+        assert children[2].text is None
+
+    def test_newline_in_markdown_paragraphs(self):
+        """Markdown paragraphs should also have newlines for spacing (not on first)."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "*Bold*\n_Italic_", 10)
+        children = list(text_elem)
+        # First: no newline
+        assert children[0].text is None
+        # Last: no trailing newline
+        assert children[1].text is None
+
+    def test_no_orphan_tspans_without_paragraph_index(self):
+        """Verify all DIRECT child tspans of text element have data-paragraph-index."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
+        # Check direct children of text element (the paragraph wrapper tspans)
+        direct_children = list(text_elem)
+        assert len(direct_children) == 2
+        for ts in direct_children:
+            assert ts.get("data-paragraph-index") is not None
+
+
+class TestApplyParagraphSpacing:
+    """Tests for apply_paragraph_spacing()"""
+
+    def test_single_paragraph_no_cloning(self):
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test" transform="translate(0,10)"><tspan data-paragraph-index="0" fill-opacity="0">Text</tspan></text></svg>')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        all_text = svg.findall(".//{http://www.w3.org/2000/svg}text")
+        assert len(all_text) == 1
+
+    def test_multiple_paragraphs_creates_clones(self):
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        all_text = svg.findall(".//{http://www.w3.org/2000/svg}text")
+        assert len(all_text) == 2
+
+    def test_clones_have_unique_ids(self):
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        ids = [t.get("id") for t in svg.findall(".//{http://www.w3.org/2000/svg}text")]
+        assert "test" in ids
+        assert "test-1" in ids
+
+    def test_first_paragraph_visible_in_original(self):
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        # Original element should have ALL paragraphs, with first visible
+        p_tspans = text_elem.findall(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index]")
+        assert len(p_tspans) == 2
+        assert p_tspans[0].get("data-paragraph-index") == "0"
+        assert p_tspans[0].get("fill-opacity") is None
+        assert p_tspans[1].get("data-paragraph-index") == "1"
+        assert p_tspans[1].get("fill-opacity") == "0"
+
+    def test_clone_translated_downward(self):
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        all_text = svg.findall(".//{http://www.w3.org/2000/svg}text")
+        assert len(all_text) == 2
+        assert all_text[0].get("transform") == "translate(0,10)"
+        assert all_text[1].get("transform") == "translate(0,20)"
+
+    def test_each_clone_has_all_paragraphs(self):
+        """Each text element should contain ALL paragraphs, with fill-opacity controlling visibility."""
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        
+        all_text = svg.findall(".//{http://www.w3.org/2000/svg}text")
+        assert len(all_text) == 2
+        
+        # Each text element should have BOTH paragraphs
+        for te in all_text:
+            p_tspans = te.findall(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index]")
+            assert len(p_tspans) == 2, f"Expected 2 paragraphs, got {len(p_tspans)}"
+
+    def test_hidden_paragraphs_act_as_spacers(self):
+        """Hidden paragraphs should be present but invisible (fill-opacity=0), acting as spacers."""
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        
+        all_text = svg.findall(".//{http://www.w3.org/2000/svg}text")
+        
+        # First element: paragraph 0 visible, paragraph 1 hidden
+        p0 = all_text[0].find(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index='0']")
+        p1 = all_text[0].find(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index='1']")
+        assert p0.get("fill-opacity") is None
+        assert p1.get("fill-opacity") == "0"
+        
+        # Second element: paragraph 0 hidden, paragraph 1 visible
+        p0 = all_text[1].find(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index='0']")
+        p1 = all_text[1].find(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index='1']")
+        assert p0.get("fill-opacity") == "0"
+        assert p1.get("fill-opacity") is None
+
+    def test_paragraph_spacing_zero_skips_feature(self):
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 0)
+        all_text = svg.findall(".//{http://www.w3.org/2000/svg}text")
+        assert len(all_text) == 1
+
+
+class TestModifyTranslateY:
+    """Tests for modify_translate_y()"""
+
+    def test_no_existing_transform(self):
+        from card_factory.templates.renderer import modify_translate_y
+        result = modify_translate_y(None, 10)
+        assert result == "translate(0,10)"
+
+    def test_existing_translate(self):
+        from card_factory.templates.renderer import modify_translate_y
+        result = modify_translate_y("translate(5,10)", 10)
+        assert result == "translate(5,20)"
+
+    def test_existing_matrix(self):
+        from card_factory.templates.renderer import modify_translate_y
+        result = modify_translate_y("matrix(1,0,0,1,0,10)", 10)
+        assert "matrix" in result
+        assert result.endswith(",20)")
+
+
+class TestRenderTemplateParagraphSpacing:
+    """Integration tests for paragraph spacing in render_template()"""
+
+    def test_paragraph_spacing_creates_multiple_text_elements(self):
+        from card_factory.templates.renderer import render_template
+        from card_factory.templates.loader import load_template
+        tree = load_template("template/programma.svg")
+        bindings = [
+            {"element_id": "text-body", "value": "Line 1\nLine 2", "paragraph_spacing": 10}
+        ]
+        tree = render_template(tree, bindings, {})
+        all_text = tree.findall(".//{http://www.w3.org/2000/svg}text[@id='text-body']")
+        assert len(all_text) == 1
+        all_text_ids = [t.get("id") for t in tree.findall(".//{http://www.w3.org/2000/svg}text")]
+        assert "text-body" in all_text_ids
+        assert "text-body-1" in all_text_ids
+
+    def test_paragraph_spacing_zero_no_clones(self):
+        from card_factory.templates.renderer import render_template
+        from card_factory.templates.loader import load_template
+        tree = load_template("template/programma.svg")
+        bindings = [
+            {"element_id": "text-body", "value": "Line 1\nLine 2", "paragraph_spacing": 0}
+        ]
+        tree = render_template(tree, bindings, {})
+        all_text = tree.findall(".//{http://www.w3.org/2000/svg}text[@id='text-body']")
+        assert len(all_text) == 1
+
+    def test_paragraph_spacing_with_markdown(self):
+        from card_factory.templates.renderer import render_template
+        from card_factory.templates.loader import load_template
+        tree = load_template("template/programma.svg")
+        bindings = [
+            {"element_id": "text-body", "value": "*Bold*\n_Italic_", "paragraph_spacing": 10}
+        ]
+        tree = render_template(tree, bindings, {})
+        all_text_ids = [t.get("id") for t in tree.findall(".//{http://www.w3.org/2000/svg}text")]
+        assert "text-body" in all_text_ids
+        assert "text-body-1" in all_text_ids

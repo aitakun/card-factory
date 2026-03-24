@@ -20,6 +20,9 @@ filter:
 #   - Inline patterns: ${binding_id} in SVG templates (resolved from bindings)
 #   - Markdown-like formatting: *bold*, !heavy! (font-weight:900), _italic_
 #   - prefix: text to prepend if value is not empty
+#   - paragraph_spacing: integer (SVG units) - spacing between paragraphs.
+#     Creates N copies of text element, one per paragraph, translated vertically.
+#     0 or not specified skips this feature. Use for elements with newlines.
 #   - attribute: for image bindings, set this to the attribute to modify (e.g., "xlink:href")
 #     Images are downloaded, cached locally, and embedded as base64 blobs
 bindings:
@@ -43,8 +46,8 @@ bindings:
     value: "{strength}"
 
   - element_id: "text-body"
-    value: "*{text}*\n_{flavor}_"
-    paragraph_spacing: 0.1
+    value: "{text}\n_{flavor}_"
+    paragraph_spacing: 1
 
   - element_id: "illustrator"
     value: "{illustrator}"
