@@ -353,6 +353,14 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
     paragraphs = text.split('\n')
     num_paragraphs = len(paragraphs)
     
+    # Get base attributes from existing tspan BEFORE clearing
+    base_tspan = element.find(f"{SVG_NS}tspan")
+    base_attrs = {}
+    if base_tspan is not None:
+        for attr, val in base_tspan.attrib.items():
+            if attr not in ('id',):
+                base_attrs[attr] = val
+    
     # Clear existing content
     element.text = None
     for child in list(element):
@@ -368,14 +376,6 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
         # First paragraph is visible, others hidden
         if p_idx > 0:
             p_tspan.set("fill-opacity", "0")
-        
-        # Get base attributes from existing tspan if present
-        base_tspan = element.find(f"{SVG_NS}tspan")
-        base_attrs = {}
-        if base_tspan is not None:
-            for attr, val in base_tspan.attrib.items():
-                if attr not in ('id',):
-                    base_attrs[attr] = val
         
         # Parse markdown and create nested tspans for this paragraph
         segments = parse_markdown_segments(paragraph_text)
@@ -534,18 +534,20 @@ def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, par
     
     Since Inkscape doesn't support proper paragraph spacing, we create copies
     of the text element - one for each paragraph - and translate them vertically.
-    Only the tspan for the current paragraph is shown in each copy.
+    Each text element contains ALL paragraphs, with fill-opacity controlling visibility.
+    Hidden paragraphs act as spacers to push the visible paragraph to the correct position.
     
     Steps:
     1. Find all paragraph tspans (identified by data-paragraph-index attribute)
     2. Count paragraphs
-    3. Clone the <text> element N-1 more times (N = number of paragraphs)
+    3. Clone the <text> element N times (N = number of paragraphs)
     4. Translate each copy down by index * paragraph_spacing
-    5. In each copy, set display="none" on all paragraph tspans except matching index
+    5. In each copy, set fill-opacity="0" on all paragraphs except the one with matching index
     """
     if element.tag != f"{SVG_NS}text":
         return
     
+    # Use namespace-prefixed xpath for original element
     paragraph_tspans = element.findall(f"{SVG_NS}tspan[@data-paragraph-index]")
     
     if not paragraph_tspans:
@@ -554,17 +556,27 @@ def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, par
     num_paragraphs = len(set(tspan.get("data-paragraph-index") for tspan in paragraph_tspans))
     
     if num_paragraphs <= 1 or paragraph_spacing <= 0:
+        # Remove fill-opacity from single paragraph (not needed when no cloning)
+        for p_tspan in paragraph_tspans:
+            if p_tspan.get("fill-opacity") == "0":
+                del p_tspan.attrib["fill-opacity"]
         return
     
+    # Serialize original element ONCE before any modifications
+    original_xml = etree.tostring(element)
+    
+    # First, set all paragraphs to hidden in original element
     for p_tspan in paragraph_tspans:
         p_tspan.set("fill-opacity", "0")
     
+    # Make first paragraph visible in original element
     if paragraph_tspans:
         if paragraph_tspans[0].get("fill-opacity") == "0":
             del paragraph_tspans[0].attrib["fill-opacity"]
     
+    # Create clones for remaining paragraphs
     for idx in range(1, num_paragraphs):
-        cloned = etree.fromstring(etree.tostring(element))
+        cloned = etree.fromstring(original_xml)
         
         existing_id = cloned.get("id")
         if existing_id:
@@ -574,14 +586,17 @@ def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, par
         new_transform = modify_translate_y(existing_transform, idx * paragraph_spacing)
         cloned.set("transform", new_transform)
         
+        # Set all paragraphs in clone to hidden, then make matching one visible
         cloned_paragraphs = cloned.findall(f"{SVG_NS}tspan[@data-paragraph-index]")
+        for p_tspan in cloned_paragraphs:
+            p_tspan.set("fill-opacity", "0")
         
-        for p_idx, p_tspan in enumerate(cloned_paragraphs):
+        # Make the paragraph matching this clone's index visible
+        for p_tspan in cloned_paragraphs:
             if p_tspan.get("data-paragraph-index") == str(idx):
                 if p_tspan.get("fill-opacity") == "0":
                     del p_tspan.attrib["fill-opacity"]
-            else:
-                p_tspan.set("fill-opacity", "0")
+                break
         
         parent = element.getparent()
         parent.append(cloned)

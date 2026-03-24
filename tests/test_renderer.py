@@ -580,13 +580,15 @@ class TestApplyFormattedTextWithParagraphs:
         assert inner1.get("font-style") == "italic"
 
     def test_no_orphan_tspans_without_paragraph_index(self):
-        """Verify no tspans without data-paragraph-index remain after processing."""
+        """Verify all DIRECT child tspans of text element have data-paragraph-index."""
         from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
         svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
         text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
         apply_formatted_text_with_paragraphs(text_elem, "Line 1\nLine 2", 10)
-        all_tspans = text_elem.findall(".//{http://www.w3.org/2000/svg}tspan")
-        for ts in all_tspans:
+        # Check direct children of text element (the paragraph wrapper tspans)
+        direct_children = list(text_elem)
+        assert len(direct_children) == 2
+        for ts in direct_children:
             assert ts.get("data-paragraph-index") is not None
 
 
@@ -642,8 +644,12 @@ class TestApplyParagraphSpacing:
         tree = etree.ElementTree(svg)
         text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
         apply_paragraph_spacing(tree, text_elem, 10)
+        # Original element should have ALL paragraphs, with first visible
         p_tspans = text_elem.findall(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index]")
+        assert len(p_tspans) == 2
+        assert p_tspans[0].get("data-paragraph-index") == "0"
         assert p_tspans[0].get("fill-opacity") is None
+        assert p_tspans[1].get("data-paragraph-index") == "1"
         assert p_tspans[1].get("fill-opacity") == "0"
 
     def test_clone_translated_downward(self):
@@ -661,6 +667,54 @@ class TestApplyParagraphSpacing:
         assert len(all_text) == 2
         assert all_text[0].get("transform") == "translate(0,10)"
         assert all_text[1].get("transform") == "translate(0,20)"
+
+    def test_each_clone_has_all_paragraphs(self):
+        """Each text element should contain ALL paragraphs, with fill-opacity controlling visibility."""
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        
+        all_text = svg.findall(".//{http://www.w3.org/2000/svg}text")
+        assert len(all_text) == 2
+        
+        # Each text element should have BOTH paragraphs
+        for te in all_text:
+            p_tspans = te.findall(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index]")
+            assert len(p_tspans) == 2, f"Expected 2 paragraphs, got {len(p_tspans)}"
+
+    def test_hidden_paragraphs_act_as_spacers(self):
+        """Hidden paragraphs should be present but invisible (fill-opacity=0), acting as spacers."""
+        from card_factory.templates.renderer import apply_paragraph_spacing
+        svg = etree.fromstring('''<svg xmlns="http://www.w3.org/2000/svg">
+            <text id="test" transform="translate(0,10)">
+                <tspan data-paragraph-index="0" fill-opacity="0">Line 1</tspan>
+                <tspan data-paragraph-index="1" fill-opacity="0">Line 2</tspan>
+            </text>
+        </svg>''')
+        tree = etree.ElementTree(svg)
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_paragraph_spacing(tree, text_elem, 10)
+        
+        all_text = svg.findall(".//{http://www.w3.org/2000/svg}text")
+        
+        # First element: paragraph 0 visible, paragraph 1 hidden
+        p0 = all_text[0].find(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index='0']")
+        p1 = all_text[0].find(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index='1']")
+        assert p0.get("fill-opacity") is None
+        assert p1.get("fill-opacity") == "0"
+        
+        # Second element: paragraph 0 hidden, paragraph 1 visible
+        p0 = all_text[1].find(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index='0']")
+        p1 = all_text[1].find(".//{http://www.w3.org/2000/svg}tspan[@data-paragraph-index='1']")
+        assert p0.get("fill-opacity") == "0"
+        assert p1.get("fill-opacity") is None
 
     def test_paragraph_spacing_zero_skips_feature(self):
         from card_factory.templates.renderer import apply_paragraph_spacing
