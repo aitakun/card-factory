@@ -383,7 +383,7 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
         
         # Add newline to paragraph wrapper to create vertical spacing (except first and last)
         # First paragraph starts at original position, subsequent ones need newlines
-        if p_idx > 0 and p_idx < num_paragraphs - 1:
+        if p_idx > 0 and p_idx < num_paragraphs:
             p_tspan.text = "\n"
         
         if not needs_formatting:
