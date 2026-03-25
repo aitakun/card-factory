@@ -4,3 +4,4 @@ export/
 __pycache__/
 *.pyc
 cache/
+downloaded_*
