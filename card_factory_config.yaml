@@ -1,6 +1,11 @@
 # Card Factory Configuration
 # This file defines how to generate cards from a spreadsheet
 
+# Spreadsheet settings
+# cleanup: whether to delete the spreadsheet file after processing (default: true)
+spreadsheet:
+  cleanup: false
+
 # Template selection
 # Use {type} to select template based on card type
 template:

@@ -10,8 +10,18 @@ def get_file_url(api_key, file_id, file_path):
 
 
 def download_file(api_key, file_url, filename):
-    """Download file from OnlyOffice URL with basic error handling"""
+    """Download file from OnlyOffice URL with basic error handling.
+    
+    If a file with the given filename already exists, returns the existing file path
+    without downloading.
+    """
+    import os
     import requests
+    
+    # If file already exists, use it instead of downloading
+    if os.path.exists(filename):
+        return filename
+    
     headers = {"Authorization": f"Bearer {api_key}"}
     response = requests.get(file_url, headers=headers)
     response.raise_for_status()

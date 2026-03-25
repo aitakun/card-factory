@@ -20,6 +20,7 @@ class CardFactoryConfig:
         self.substitutions: Dict[str, str] = {}
         self.output_directory: str = "export"
         self.filename_pattern: str = "{name}.svg"
+        self.spreadsheet_cleanup: bool = True
         
         if config_path:
             self.load(config_path)
@@ -76,6 +77,12 @@ class CardFactoryConfig:
                 self.filename_pattern = output_config.get('filename_pattern', self.filename_pattern)
             elif isinstance(output_config, str):
                 self.output_directory = output_config
+        
+        # Load spreadsheet settings
+        if 'spreadsheet' in config:
+            spreadsheet_config = config['spreadsheet']
+            if isinstance(spreadsheet_config, dict):
+                self.spreadsheet_cleanup = spreadsheet_config.get('cleanup', self.spreadsheet_cleanup)
     
     def get_bindings(self) -> List[Dict[str, Any]]:
         """Get the list of bindings"""
@@ -96,6 +103,10 @@ class CardFactoryConfig:
     def get_filter(self) -> tuple:
         """Get filter settings as (column, contains) tuple"""
         return (self.filter_column, self.filter_contains)
+    
+    def should_cleanup_spreadsheet(self) -> bool:
+        """Check if downloaded spreadsheet file should be cleaned up after use"""
+        return self.spreadsheet_cleanup
     
     def should_include_row(self, row: Dict[str, Any]) -> bool:
         """Check if a row should be included based on filter.

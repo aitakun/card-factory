@@ -177,3 +177,40 @@ class TestShouldIncludeRow:
         config.filter_contains = "weapon"
         row = {"name": "Sword"}
         assert config.should_include_row(row) is False
+
+
+class TestSpreadsheetCleanup:
+    """Tests for spreadsheet cleanup setting"""
+
+    def test_default_cleanup_true(self):
+        config = CardFactoryConfig()
+        assert config.spreadsheet_cleanup is True
+        assert config.should_cleanup_spreadsheet() is True
+
+    def test_load_cleanup_true(self):
+        config_content = """
+spreadsheet:
+  cleanup: true
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(config_content)
+            f.flush()
+            config = CardFactoryConfig(f.name)
+
+        assert config.spreadsheet_cleanup is True
+        assert config.should_cleanup_spreadsheet() is True
+        os.unlink(f.name)
+
+    def test_load_cleanup_false(self):
+        config_content = """
+spreadsheet:
+  cleanup: false
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(config_content)
+            f.flush()
+            config = CardFactoryConfig(f.name)
+
+        assert config.spreadsheet_cleanup is False
+        assert config.should_cleanup_spreadsheet() is False
+        os.unlink(f.name)
