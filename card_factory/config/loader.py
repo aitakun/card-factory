@@ -20,6 +20,8 @@ class CardFactoryConfig:
         self.substitutions: Dict[str, str] = {}
         self.output_directory: str = "export"
         self.filename_pattern: str = "{name}.svg"
+        self.preview_enabled: bool = False
+        self.preview_width: int = 800
         self.spreadsheet_cleanup: bool = True
         
         if config_path:
@@ -75,6 +77,10 @@ class CardFactoryConfig:
             if isinstance(output_config, dict):
                 self.output_directory = output_config.get('directory', self.output_directory)
                 self.filename_pattern = output_config.get('filename_pattern', self.filename_pattern)
+                preview_config = output_config.get('preview')
+                if preview_config and isinstance(preview_config, dict):
+                    self.preview_enabled = preview_config.get('enabled', self.preview_enabled)
+                    self.preview_width = preview_config.get('width', self.preview_width)
             elif isinstance(output_config, str):
                 self.output_directory = output_config
         

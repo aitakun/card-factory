@@ -4,7 +4,7 @@
 # Spreadsheet settings
 # cleanup: whether to delete the spreadsheet file after processing (default: true)
 spreadsheet:
-  cleanup: false
+  cleanup: true
 
 # Template selection
 # Use {type} to select template based on card type
@@ -114,3 +114,6 @@ substitutions:
 output:
   directory: "export"
   filename_pattern: "{name}.svg"
+  preview:
+    enabled: true
+    width: 800

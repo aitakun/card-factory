@@ -6,9 +6,12 @@ import glob
 import requests
 from dotenv import load_dotenv
 
+from pathlib import Path
+
 from card_factory.api.client import get_my_documents
 from card_factory.api.auth import load_api_key_from_env
 from card_factory.utils.file_handler import download_file
+from card_factory.utils.png_preview import check_inkscape_available, generate_preview_directory
 from card_factory.processors.file_filter import find_spreadsheet_file
 from card_factory.processors.xlsx_extractor import extract_xlsx_data
 from card_factory.binding.engine import CardBindingEngine
@@ -98,6 +101,21 @@ def main():
         
         print(f"\n✓ Successfully generated {len(generated_files)} card(s)")
         print(f"Cards saved in: {engine.export_dir.absolute()}")
+        
+        if config and config.preview_enabled:
+            if not check_inkscape_available():
+                print("\n⚠ Warning: Inkscape not found. Skipping PNG preview generation.")
+            else:
+                preview_dir = Path(export_dir) / "preview"
+                png_success, png_failed = generate_preview_directory(
+                    generated_files,
+                    preview_dir,
+                    config.preview_width
+                )
+                if png_success:
+                    print(f"\n✓ Generated {len(png_success)} PNG preview(s) in: {preview_dir.absolute()}")
+                if png_failed:
+                    print(f"\n⚠ Warning: Failed to generate {len(png_failed)} PNG(s)")
         
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}")
