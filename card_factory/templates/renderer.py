@@ -10,6 +10,79 @@ SVG_NS = "{http://www.w3.org/2000/svg}"
 
 INLINE_PATTERN_RE = re.compile(r'\$\{([^}]+)\}')
 
+MARKERS = [
+    ('*', '*', 'bold'),
+    ('!', '!', 'heavy'),
+    ('_', '_', 'italic'),
+    ('#', '#', 'small'),
+]
+
+
+def get_format_attributes(fmt: str) -> Dict[str, str]:
+    """Map format names to SVG attributes.
+    
+    Args:
+        fmt: Format name ('bold', 'heavy', 'italic', 'small', or None)
+        
+    Returns:
+        Dictionary of SVG attribute names to values for this format
+    """
+    attrs = {}
+    if fmt == "heavy":
+        attrs["font-weight"] = "900"
+    elif fmt == "bold":
+        attrs["font-weight"] = "bold"
+    elif fmt == "italic":
+        attrs["font-style"] = "italic"
+    elif fmt == "small":
+        attrs["font-size"] = "28"
+    return attrs
+
+
+def get_excluded_base_attributes() -> Set[str]:
+    """Base attributes NOT inherited when formatting is applied.
+    
+    These attributes are set by the formatting logic and should not be
+    inherited from the base tspan attributes.
+    """
+    return {'id', 'font-weight', 'font-style'}
+
+
+def create_formatting_tspan(
+    parent: etree.Element,
+    segment: Dict[str, Any],
+    base_attrs: Dict[str, str]
+) -> etree.Element:
+    """Create tspan with formatting attributes applied.
+    
+    Args:
+        parent: Parent SVG element to add the tspan to
+        segment: Segment dictionary with 'format', 'text', and optional 'content'
+        base_attrs: Base attributes to inherit from parent
+        
+    Returns:
+        The created tspan element
+    """
+    fmt = segment.get("format")
+    content = segment.get("content")
+    
+    nested = etree.SubElement(parent, f"{SVG_NS}tspan")
+    
+    for attr, val in base_attrs.items():
+        if attr not in get_excluded_base_attributes():
+            nested.set(attr, val)
+    
+    for attr, val in get_format_attributes(fmt).items():
+        nested.set(attr, val)
+    
+    if content is not None:
+        for child_seg in content:
+            create_formatting_tspan(nested, child_seg, base_attrs)
+    else:
+        nested.text = segment.get("text", "")
+    
+    return nested
+
 
 def resolve_inline_patterns(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any]) -> Set[str]:
     """Find and resolve ${binding_id} patterns in SVG elements.
@@ -119,17 +192,12 @@ def parse_markdown_segments(text: str) -> List[Dict[str, Any]]:
     - *text* for bold
     - !text! for heavy (font-weight: 900)
     - _text_ for italic
+    - #text# for small (font-size: 28px)
     
-    Heavy and italic can be nested inside bold.
+    All formats can be nested within each other.
     """
     if not text:
         return []
-    
-    MARKERS = [
-        ('*', '*', 'bold'),
-        ('!', '!', 'heavy'),
-        ('_', '_', 'italic'),
-    ]
     
     def find_matching_close(txt, start):
         """Find the matching close marker for the opener at position start."""
@@ -220,7 +288,7 @@ def parse_markdown_segments(text: str) -> List[Dict[str, Any]]:
 def apply_markdown_within_tspan(tspan: etree.Element, text: str) -> None:
     """
     Apply markdown formatting by creating nested tspans within an existing tspan.
-    The parent tspan's base attributes are inherited, but font-weight/font-style
+    The parent tspan's base attributes are inherited, but font-weight/font-style/font-size
     are explicitly set for formatted segments.
     """
     segments = parse_markdown_segments(text)
@@ -229,67 +297,23 @@ def apply_markdown_within_tspan(tspan: etree.Element, text: str) -> None:
         tspan.text = None
         return
     
-    # Check if any segment needs formatting
     needs_formatting = any(s.get("format") is not None for s in segments)
     
     if not needs_formatting:
-        # No formatting needed, just set the text
         tspan.text = text
         return
     
-    # Save the parent tspan's base attributes (excluding formatting-specific ones)
     base_attrs = {}
     for attr, val in tspan.attrib.items():
         if attr not in ('id',):
             base_attrs[attr] = val
     
-    # Clear the parent tspan (both text and children)
     tspan.text = None
     for child in list(tspan):
         tspan.remove(child)
     
-    # Create nested tspans recursively
-    def create_nested_tspan(parent_tspan, segment, parent_format=None):
-        """Recursively create tspans for segments with nested formatting support."""
-        fmt = segment.get("format")
-        content = segment.get("content")
-        
-        # Determine font attributes based on format
-        font_weight = None
-        font_style = None
-        
-        if fmt == "heavy":
-            font_weight = "900"
-        elif fmt == "bold":
-            font_weight = "bold"
-        elif fmt == "italic":
-            font_style = "italic"
-        
-        # Create the tspan
-        nested = etree.SubElement(parent_tspan, f"{SVG_NS}tspan")
-        
-        # Copy base attributes (but don't override font-weight/font-style from inner formatting)
-        for attr, val in base_attrs.items():
-            if attr not in ('font-weight', 'font-style'):
-                nested.set(attr, val)
-        
-        # Apply this level's formatting (overrides base)
-        if font_weight:
-            nested.set("font-weight", font_weight)
-        if font_style:
-            nested.set("font-style", font_style)
-        
-        # Handle content
-        if content is not None:
-            # Has nested content - recursively create children
-            for child_seg in content:
-                create_nested_tspan(nested, child_seg, fmt)
-        else:
-            # Simple text
-            nested.text = segment.get("text", "")
-    
     for segment in segments:
-        create_nested_tspan(tspan, segment)
+        create_formatting_tspan(tspan, segment, base_attrs)
 
 
 def apply_formatted_text(element: etree.Element, text: str) -> None:
@@ -387,46 +411,13 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
             p_tspan.text = "\n"
         
         if not needs_formatting:
-            # No markdown formatting - create simple tspan
             inner_tspan = etree.SubElement(p_tspan, f"{SVG_NS}tspan")
             for attr, val in base_attrs.items():
                 inner_tspan.set(attr, val)
             inner_tspan.text = paragraph_text
         else:
-            # Has markdown - create nested tspans recursively
-            def create_nested_tspan(parent_tspan, segment, parent_format=None):
-                fmt = segment.get("format")
-                content = segment.get("content")
-                
-                font_weight = None
-                font_style = None
-                
-                if fmt == "heavy":
-                    font_weight = "900"
-                elif fmt == "bold":
-                    font_weight = "bold"
-                elif fmt == "italic":
-                    font_style = "italic"
-                
-                nested = etree.SubElement(parent_tspan, f"{SVG_NS}tspan")
-                
-                for attr, val in base_attrs.items():
-                    if attr not in ('font-weight', 'font-style'):
-                        nested.set(attr, val)
-                
-                if font_weight:
-                    nested.set("font-weight", font_weight)
-                if font_style:
-                    nested.set("font-style", font_style)
-                
-                if content is not None:
-                    for child_seg in content:
-                        create_nested_tspan(nested, child_seg, fmt)
-                else:
-                    nested.text = segment.get("text", "")
-            
             for segment in segments:
-                create_nested_tspan(p_tspan, segment)
+                create_formatting_tspan(p_tspan, segment, base_attrs)
 
 
 def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: str, substitutions: Dict[str, str] = None) -> str:

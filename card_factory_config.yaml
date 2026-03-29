@@ -51,7 +51,7 @@ bindings:
     value: "{strength}"
 
   - element_id: "text-body"
-    value: "{text}\n_{flavor}_"
+    value: "{text}\n#_{flavor}_#"
     paragraph_spacing: 1
 
   - element_id: "illustrator"

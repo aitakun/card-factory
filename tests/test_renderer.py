@@ -15,7 +15,115 @@ from card_factory.templates.renderer import (
     evaluate_condition,
     apply_formatted_text,
     apply_markdown_within_tspan,
+    apply_formatted_text_with_paragraphs,
+    get_format_attributes,
+    get_excluded_base_attributes,
+    create_formatting_tspan,
+    MARKERS,
+    SVG_NS,
 )
+
+
+class TestHelperFunctions:
+    """Tests for helper functions (get_format_attributes, get_excluded_base_attributes, create_formatting_tspan)"""
+
+    def test_get_format_attributes_bold(self):
+        attrs = get_format_attributes("bold")
+        assert attrs == {"font-weight": "bold"}
+
+    def test_get_format_attributes_heavy(self):
+        attrs = get_format_attributes("heavy")
+        assert attrs == {"font-weight": "900"}
+
+    def test_get_format_attributes_italic(self):
+        attrs = get_format_attributes("italic")
+        assert attrs == {"font-style": "italic"}
+
+    def test_get_format_attributes_small(self):
+        attrs = get_format_attributes("small")
+        assert attrs == {"font-size": "28"}
+
+    def test_get_format_attributes_none(self):
+        attrs = get_format_attributes(None)
+        assert attrs == {}
+
+    def test_get_excluded_base_attributes(self):
+        excluded = get_excluded_base_attributes()
+        assert "id" in excluded
+        assert "font-weight" in excluded
+        assert "font-style" in excluded
+        assert "font-family" not in excluded
+        assert "font-size" not in excluded
+
+    def test_create_formatting_tspan_simple(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text></text></svg>')
+        text_elem = svg.find(f"{SVG_NS}text")
+        base_attrs = {"font-family": "Arial"}
+        segment = {"text": "test", "format": None}
+        
+        create_formatting_tspan(text_elem, segment, base_attrs)
+        
+        tspan = text_elem.find(f"{SVG_NS}tspan")
+        assert tspan is not None
+        assert tspan.text == "test"
+        assert tspan.get("font-family") == "Arial"
+
+    def test_create_formatting_tspan_bold(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text></text></svg>')
+        text_elem = svg.find(f"{SVG_NS}text")
+        base_attrs = {"font-family": "Arial"}
+        segment = {"text": "bold", "format": "bold"}
+        
+        create_formatting_tspan(text_elem, segment, base_attrs)
+        
+        tspan = text_elem.find(f"{SVG_NS}tspan")
+        assert tspan.get("font-weight") == "bold"
+        assert tspan.get("font-family") == "Arial"
+
+    def test_create_formatting_tspan_small(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text></text></svg>')
+        text_elem = svg.find(f"{SVG_NS}text")
+        base_attrs = {"font-family": "Arial", "font-size": "12"}
+        segment = {"text": "small", "format": "small"}
+        
+        create_formatting_tspan(text_elem, segment, base_attrs)
+        
+        tspan = text_elem.find(f"{SVG_NS}tspan")
+        assert tspan.get("font-size") == "28"
+        assert tspan.get("font-family") == "Arial"
+
+    def test_create_formatting_tspan_nested(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text></text></svg>')
+        text_elem = svg.find(f"{SVG_NS}text")
+        base_attrs = {"font-family": "Arial"}
+        segment = {
+            "format": "bold",
+            "content": [
+                {"text": "bold ", "format": None},
+                {"text": "small", "format": "small"}
+            ]
+        }
+        
+        create_formatting_tspan(text_elem, segment, base_attrs)
+        
+        tspans = svg.findall(f".//{SVG_NS}tspan")
+        assert len(tspans) == 3
+        assert tspans[0].get("font-weight") == "bold"
+        assert tspans[1].text == "bold "
+        assert tspans[2].get("font-size") == "28"
+
+
+class TestMarkers:
+    """Tests for MARKERS constant"""
+
+    def test_markers_has_small(self):
+        marker_chars = [(m[0], m[1]) for m in MARKERS]
+        assert ('#', '#') in marker_chars
+
+    def test_markers_all_have_format(self):
+        for marker in MARKERS:
+            assert len(marker) == 3
+            assert marker[2] is not None
 
 
 class TestParseMarkdownSegments:
@@ -48,6 +156,12 @@ class TestParseMarkdownSegments:
         assert len(result) == 1
         assert result[0]["text"] == "italic text"
         assert result[0]["format"] == "italic"
+
+    def test_small_simple(self):
+        result = parse_markdown_segments("#small text#")
+        assert len(result) == 1
+        assert result[0]["text"] == "small text"
+        assert result[0]["format"] == "small"
 
     def test_mixed_plain_and_formatted(self):
         result = parse_markdown_segments("Hello *bold* World")
@@ -89,6 +203,44 @@ class TestParseMarkdownSegments:
         assert result[0]["format"] == "bold"
         assert result[2]["format"] == "italic"
         assert result[4]["format"] == "heavy"
+
+    def test_small_mixed_with_other_formats(self):
+        result = parse_markdown_segments("*bold* and #small#")
+        assert len(result) == 3
+        assert result[0]["format"] == "bold"
+        assert result[2]["format"] == "small"
+
+    def test_all_formats_including_small(self):
+        result = parse_markdown_segments("*bold* and _italic_ and !heavy! and #small#")
+        assert len(result) == 7
+        assert result[0]["format"] == "bold"
+        assert result[2]["format"] == "italic"
+        assert result[4]["format"] == "heavy"
+        assert result[6]["format"] == "small"
+
+    def test_small_nested_in_bold(self):
+        result = parse_markdown_segments("*bold #small# bold*")
+        assert len(result) == 1
+        assert result[0]["format"] == "bold"
+        assert len(result[0]["content"]) == 3
+        assert result[0]["content"][0]["text"] == "bold "
+        assert result[0]["content"][0]["format"] is None
+        assert result[0]["content"][1]["text"] == "small"
+        assert result[0]["content"][1]["format"] == "small"
+        assert result[0]["content"][2]["text"] == " bold"
+        assert result[0]["content"][2]["format"] is None
+
+    def test_bold_nested_in_small(self):
+        result = parse_markdown_segments("#small *bold* small#")
+        assert len(result) == 1
+        assert result[0]["format"] == "small"
+        assert len(result[0]["content"]) == 3
+        assert result[0]["content"][0]["text"] == "small "
+        assert result[0]["content"][0]["format"] is None
+        assert result[0]["content"][1]["text"] == "bold"
+        assert result[0]["content"][1]["format"] == "bold"
+        assert result[0]["content"][2]["text"] == " small"
+        assert result[0]["content"][2]["format"] is None
 
     def test_adjacent_formats(self):
         result = parse_markdown_segments("*bold*_italic_")
@@ -426,6 +578,42 @@ class TestApplyFormattedText:
         nested = all_tspans[1]
         assert nested.get("font-weight") == "900"
         assert nested.text == "heavy text"
+
+    def test_small_creates_nested_tspan(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "#small text#")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 2
+        nested = all_tspans[1]
+        assert nested.get("font-size") == "28"
+        assert nested.text == "small text"
+
+    def test_small_preserves_other_base_attributes(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner" font-family="Arial" font-size="12">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "#small#")
+        nested = svg.findall(".//{http://www.w3.org/2000/svg}tspan")[1]
+        assert nested.get("font-size") == "28"
+        assert nested.get("font-family") == "Arial"
+
+    def test_small_nested_in_bold(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "*bold #small# bold*")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 5
+        assert all_tspans[1].get("font-weight") == "bold"
+        assert all_tspans[3].get("font-size") == "28"
+
+    def test_bold_nested_in_small(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "#small *bold* small#")
+        all_tspans = svg.findall(".//{http://www.w3.org/2000/svg}tspan")
+        assert len(all_tspans) == 5
+        assert all_tspans[1].get("font-size") == "28"
+        assert all_tspans[3].get("font-weight") == "bold"
 
     def test_plain_text_replaces_parent_text(self):
         svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
