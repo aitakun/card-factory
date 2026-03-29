@@ -23,6 +23,7 @@ class CardFactoryConfig:
         self.preview_enabled: bool = False
         self.preview_width: int = 800
         self.spreadsheet_cleanup: bool = True
+        self.small_font_size: int = 28
         
         if config_path:
             self.load(config_path)
@@ -89,6 +90,12 @@ class CardFactoryConfig:
             spreadsheet_config = config['spreadsheet']
             if isinstance(spreadsheet_config, dict):
                 self.spreadsheet_cleanup = spreadsheet_config.get('cleanup', self.spreadsheet_cleanup)
+        
+        # Load formatting settings
+        if 'formatting' in config:
+            formatting_config = config['formatting']
+            if isinstance(formatting_config, dict):
+                self.small_font_size = formatting_config.get('small_font_size', self.small_font_size)
     
     def get_bindings(self) -> List[Dict[str, Any]]:
         """Get the list of bindings"""
@@ -113,6 +120,10 @@ class CardFactoryConfig:
     def should_cleanup_spreadsheet(self) -> bool:
         """Check if downloaded spreadsheet file should be cleaned up after use"""
         return self.spreadsheet_cleanup
+    
+    def get_small_font_size(self) -> int:
+        """Get the font size for small text formatting (#text#)."""
+        return self.small_font_size
     
     def should_include_row(self, row: Dict[str, Any]) -> bool:
         """Check if a row should be included based on filter.

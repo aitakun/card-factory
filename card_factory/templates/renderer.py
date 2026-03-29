@@ -18,11 +18,12 @@ MARKERS = [
 ]
 
 
-def get_format_attributes(fmt: str) -> Dict[str, str]:
+def get_format_attributes(fmt: str, small_font_size: int = 28) -> Dict[str, str]:
     """Map format names to SVG attributes.
     
     Args:
         fmt: Format name ('bold', 'heavy', 'italic', 'small', or None)
+        small_font_size: Font size in pixels for small text (default: 28)
         
     Returns:
         Dictionary of SVG attribute names to values for this format
@@ -35,7 +36,7 @@ def get_format_attributes(fmt: str) -> Dict[str, str]:
     elif fmt == "italic":
         attrs["font-style"] = "italic"
     elif fmt == "small":
-        attrs["font-size"] = "28"
+        attrs["font-size"] = str(small_font_size)
     return attrs
 
 
@@ -51,7 +52,8 @@ def get_excluded_base_attributes() -> Set[str]:
 def create_formatting_tspan(
     parent: etree.Element,
     segment: Dict[str, Any],
-    base_attrs: Dict[str, str]
+    base_attrs: Dict[str, str],
+    small_font_size: int = 28
 ) -> etree.Element:
     """Create tspan with formatting attributes applied.
     
@@ -59,6 +61,7 @@ def create_formatting_tspan(
         parent: Parent SVG element to add the tspan to
         segment: Segment dictionary with 'format', 'text', and optional 'content'
         base_attrs: Base attributes to inherit from parent
+        small_font_size: Font size in pixels for small text (default: 28)
         
     Returns:
         The created tspan element
@@ -72,12 +75,12 @@ def create_formatting_tspan(
         if attr not in get_excluded_base_attributes():
             nested.set(attr, val)
     
-    for attr, val in get_format_attributes(fmt).items():
+    for attr, val in get_format_attributes(fmt, small_font_size).items():
         nested.set(attr, val)
     
     if content is not None:
         for child_seg in content:
-            create_formatting_tspan(nested, child_seg, base_attrs)
+            create_formatting_tspan(nested, child_seg, base_attrs, small_font_size)
     else:
         nested.text = segment.get("text", "")
     
@@ -285,11 +288,16 @@ def parse_markdown_segments(text: str) -> List[Dict[str, Any]]:
     return merged
 
 
-def apply_markdown_within_tspan(tspan: etree.Element, text: str) -> None:
+def apply_markdown_within_tspan(tspan: etree.Element, text: str, small_font_size: int = 28) -> None:
     """
     Apply markdown formatting by creating nested tspans within an existing tspan.
     The parent tspan's base attributes are inherited, but font-weight/font-style/font-size
     are explicitly set for formatted segments.
+    
+    Args:
+        tspan: The SVG tspan element to apply formatting to
+        text: Text content with markdown-like formatting
+        small_font_size: Font size in pixels for small text (default: 28)
     """
     segments = parse_markdown_segments(text)
     
@@ -313,10 +321,10 @@ def apply_markdown_within_tspan(tspan: etree.Element, text: str) -> None:
         tspan.remove(child)
     
     for segment in segments:
-        create_formatting_tspan(tspan, segment, base_attrs)
+        create_formatting_tspan(tspan, segment, base_attrs, small_font_size)
 
 
-def apply_formatted_text(element: etree.Element, text: str) -> None:
+def apply_formatted_text(element: etree.Element, text: str, small_font_size: int = 28) -> None:
     """
     Apply text to element with markdown formatting support.
     
@@ -326,6 +334,11 @@ def apply_formatted_text(element: etree.Element, text: str) -> None:
     - If element is a tspan (has ID on tspan): substitute text, apply markdown if needed
     - If element is a text (has ID on text): if no existing tspans, create one with markdown;
       if tspans exist, apply markdown within first tspan
+    
+    Args:
+        element: The SVG element to apply text to
+        text: Text content with markdown-like formatting
+        small_font_size: Font size in pixels for small text (default: 28)
     """
     
     # If element is a text element
@@ -337,38 +350,44 @@ def apply_formatted_text(element: etree.Element, text: str) -> None:
             # No existing tspans - create one with the text (markdown will be parsed within it)
             tspan = etree.SubElement(element, f"{SVG_NS}tspan")
             tspan.text = text
-            apply_markdown_within_tspan(tspan, text)
+            apply_markdown_within_tspan(tspan, text, small_font_size)
             return
         
         # Has existing tspans - apply to first one
         tspan = tspans[0]
         tspan.text = text
-        apply_markdown_within_tspan(tspan, text)
+        apply_markdown_within_tspan(tspan, text, small_font_size)
         return
     
     # If element is a tspan
     if element.tag == f"{SVG_NS}tspan":
         element.text = text
-        apply_markdown_within_tspan(element, text)
+        apply_markdown_within_tspan(element, text, small_font_size)
         return
     
     # Non-text/tspan element, just set text
     set_element_text_content(element, text)
 
 
-def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, paragraph_spacing: int) -> None:
+def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, paragraph_spacing: int, small_font_size: int = 28) -> None:
     """
     Apply text to element with markdown formatting AND paragraph support.
     
     This function builds the entire tspan tree in one go:
     - text element
       - paragraph_tspan (data-paragraph-index="0", fill-opacity="0" or None)
-        - markdown_tspan (with formatting from *bold*, _italic_, !heavy!)
+        - markdown_tspan (with formatting from *bold*, _italic_, !heavy!, #small#)
           - text content
       - paragraph_tspan (data-paragraph-index="1", fill-opacity="0")
         - ...
     
     This avoids the complexity of trying to wrap existing tspans after they're created.
+    
+    Args:
+        element: The SVG text element to apply text to
+        text: Text content with markdown-like formatting
+        paragraph_spacing: Spacing in SVG units between paragraphs
+        small_font_size: Font size in pixels for small text (default: 28)
     """
     if element.tag != f"{SVG_NS}text":
         set_element_text_content(element, text)
@@ -417,7 +436,7 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
             inner_tspan.text = paragraph_text
         else:
             for segment in segments:
-                create_formatting_tspan(p_tspan, segment, base_attrs)
+                create_formatting_tspan(p_tspan, segment, base_attrs, small_font_size)
 
 
 def resolve_template_value(template: str, row_data: Dict[str, Any], element_id: str, substitutions: Dict[str, str] = None) -> str:
@@ -736,14 +755,19 @@ def apply_image_to_element(element: etree.Element, attribute: str, data_uri: str
         element.set(attribute, data_uri)
 
 
-def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any], substitutions: Dict[str, str] = None) -> etree.ElementTree:
+def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any], substitutions: Dict[str, str] = None, small_font_size: int = 28) -> etree.ElementTree:
     """Substitute values from row_data into template elements based on bindings.
     
     Resolution order:
     1. Inline ${binding_id} patterns in SVG elements
     2. Standard bindings by element ID
     
-    substitutions: Optional dict of string replacements applied after field substitution
+    Args:
+        tree: The SVG template tree
+        bindings: List of binding configurations
+        row_data: Data from spreadsheet row
+        substitutions: Optional dict of string replacements applied after field substitution
+        small_font_size: Font size in pixels for small text (default: 28)
     """
     if substitutions is None:
         substitutions = {}
@@ -791,10 +815,10 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
         paragraph_spacing = binding.get("paragraph_spacing")
         if paragraph_spacing and isinstance(paragraph_spacing, int) and paragraph_spacing > 0:
             # Use new function that builds entire tspan tree at once
-            apply_formatted_text_with_paragraphs(element, value, paragraph_spacing)
+            apply_formatted_text_with_paragraphs(element, value, paragraph_spacing, small_font_size)
             apply_paragraph_spacing(tree, element, paragraph_spacing)
         else:
-            apply_formatted_text(element, value)
+            apply_formatted_text(element, value, small_font_size)
     
     return tree
 

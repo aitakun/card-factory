@@ -23,7 +23,7 @@ filter:
 #   - value: field name(s) to use, supports templates like "{field}" or "{field1}\n\n{field2}"
 #   - Transform tags: [uppercase]{field}[/uppercase], [lowercase]{field}[/lowercase]
 #   - Inline patterns: ${binding_id} in SVG templates (resolved from bindings)
-#   - Markdown-like formatting: *bold*, !heavy! (font-weight:900), _italic_
+#   - Markdown-like formatting: *bold*, !heavy! (font-weight:900), _italic_, #small# (font-size from formatting.small_font_size)
 #   - prefix: text to prepend if value is not empty
 #   - paragraph_spacing: integer (SVG units) - spacing between paragraphs.
 #     Creates N copies of text element, one per paragraph, translated vertically.
@@ -102,6 +102,10 @@ color_schemes:
       primary-color: "#666666"
       light-color: "#999999"
       lighter-color: "#cccccc"
+
+# Formatting settings
+formatting:
+  small_font_size: 28  # Font size in pixels for #small text# (default: 28)
 
 # Substitutions: used to display symbols in place of placeholders
 substitutions:

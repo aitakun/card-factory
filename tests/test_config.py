@@ -210,7 +210,52 @@ spreadsheet:
             f.write(config_content)
             f.flush()
             config = CardFactoryConfig(f.name)
-
+        
         assert config.spreadsheet_cleanup is False
         assert config.should_cleanup_spreadsheet() is False
+        os.unlink(f.name)
+
+
+class TestSmallFontSize:
+    """Tests for small_font_size configuration"""
+
+    def test_default_small_font_size(self):
+        config = CardFactoryConfig()
+        assert config.small_font_size == 28
+
+    def test_get_small_font_size(self):
+        config = CardFactoryConfig()
+        config.small_font_size = 24
+        assert config.get_small_font_size() == 24
+
+    def test_load_small_font_size_from_config(self):
+        config_content = """
+formatting:
+  small_font_size: 20
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(config_content)
+            f.flush()
+            config = CardFactoryConfig(f.name)
+        
+        assert config.small_font_size == 20
+        assert config.get_small_font_size() == 20
+        os.unlink(f.name)
+
+    def test_load_small_font_size_with_other_settings(self):
+        config_content = """
+formatting:
+  small_font_size: 32
+
+bindings:
+  - element_id: test
+    value: "{name}"
+"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            f.write(config_content)
+            f.flush()
+            config = CardFactoryConfig(f.name)
+        
+        assert config.small_font_size == 32
+        assert len(config.bindings) == 1
         os.unlink(f.name)

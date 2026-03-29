@@ -105,9 +105,12 @@ class CardBindingEngine:
         # Render template with data bindings
         bindings = self.get_bindings()
         substitutions = {}
+        small_font_size = 28
         if self.config and hasattr(self.config, 'get_substitutions'):
             substitutions = self.config.get_substitutions()
-        tree = render_template(tree, bindings, row_data, substitutions)
+        if self.config and hasattr(self.config, 'get_small_font_size'):
+            small_font_size = self.config.get_small_font_size()
+        tree = render_template(tree, bindings, row_data, substitutions, small_font_size)
         
         # Apply color schemes
         if self.config and hasattr(self.config, 'get_color_schemes'):

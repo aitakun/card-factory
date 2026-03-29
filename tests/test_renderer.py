@@ -43,6 +43,15 @@ class TestHelperFunctions:
         attrs = get_format_attributes("small")
         assert attrs == {"font-size": "28"}
 
+    def test_get_format_attributes_small_custom_size(self):
+        attrs = get_format_attributes("small", small_font_size=20)
+        assert attrs == {"font-size": "20"}
+
+    def test_get_format_attributes_small_different_sizes(self):
+        for size in [16, 24, 32, 48]:
+            attrs = get_format_attributes("small", small_font_size=size)
+            assert attrs == {"font-size": str(size)}
+
     def test_get_format_attributes_none(self):
         attrs = get_format_attributes(None)
         assert attrs == {}
@@ -614,6 +623,13 @@ class TestApplyFormattedText:
         assert len(all_tspans) == 5
         assert all_tspans[1].get("font-size") == "28"
         assert all_tspans[3].get("font-weight") == "bold"
+
+    def test_small_with_custom_font_size(self):
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
+        tspan = svg.find(".//{http://www.w3.org/2000/svg}tspan")
+        apply_markdown_within_tspan(tspan, "#small text#", small_font_size=20)
+        nested = svg.findall(".//{http://www.w3.org/2000/svg}tspan")[1]
+        assert nested.get("font-size") == "20"
 
     def test_plain_text_replaces_parent_text(self):
         svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan id="inner">Original</tspan></text></svg>')
