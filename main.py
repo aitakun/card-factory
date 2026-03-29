@@ -116,6 +116,8 @@ def main():
                     print(f"\n✓ Generated {len(png_success)} PNG preview(s) in: {preview_dir.absolute()}")
                 if png_failed:
                     print(f"\n⚠ Warning: Failed to generate {len(png_failed)} PNG(s)")
+                    for svg_path, error in png_failed:
+                        print(f"  - {svg_path}: {error}")
         
     except requests.exceptions.RequestException as e:
         print(f"Error: {e}")
