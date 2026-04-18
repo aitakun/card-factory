@@ -16,7 +16,7 @@ template:
 # Use | for OR logic: "hardware|gene" matches either
 filter:
   column: "type"
-  contains: "hardware|evento|programma|risorsa"
+  contains: "hardware|evento|programma|risorsa|ICE|asset|operazione|obiettivo"
 
 # Bindings: map SVG element IDs to spreadsheet columns
 # Supported options:
@@ -49,6 +49,9 @@ bindings:
 
   - element_id: "strength"
     value: "{strength}"
+
+  - element_id: "trash_cost"
+    value: "{trash_cost}"
 
   - element_id: "text-body"
     value: "{text}\n#_{flavor}_#"
@@ -87,6 +90,24 @@ visibility:
   - element_id: "pip5"
     condition: "influence>=5"
 
+  - element_id: "barrier"
+    condition: "subtypes~=Barrier"
+
+  - element_id: "code_gate"
+    condition: "subtypes~=Code Gate"
+
+  - element_id: "sentry"
+    condition: "subtypes~=Sentry"
+
+  - element_id: "fracter"
+    condition: "subtypes~=Fracter"
+
+  - element_id: "decoder"
+    condition: "subtypes~=Decoder"
+
+  - element_id: "killer"
+    condition: "subtypes~=Killer"
+
 # Color schemes: map column values to SVG gradient colors
 # lookup_column: column to use for lookup
 # schemes: map values (case-insensitive) to color definitions
@@ -98,10 +119,14 @@ color_schemes:
       primary-color: "#194c9b"
       light-color: "#75cbff"
       lighter-color: "#d5f1fd"
+    jinteki:
+      primary-color: "#8d0b1f"
+      light-color: "#ee7575"
+      lighter-color: "#fde1df"
     neutral:
-      primary-color: "#666666"
-      light-color: "#999999"
-      lighter-color: "#cccccc"
+      primary-color: "#777777"
+      light-color: "#bbbbbb"
+      lighter-color: "#eeeeee"
 
 # Formatting settings
 formatting:
@@ -113,6 +138,7 @@ substitutions:
   "[click]": ""
   "[mu]": ""
   "[recurring credit]": ""
+  "[subroutine]": ""
 
 # Output settings
 output:
