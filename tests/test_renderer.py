@@ -856,6 +856,86 @@ class TestApplyFormattedTextWithParagraphs:
         for ts in direct_children:
             assert ts.get("data-paragraph-index") is not None
 
+    def test_italic_spans_newline(self):
+        """Nested #_text_# (small containing italic) spanning newline - full formatted text spans."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "#_A few\nlines_#", 10)
+        children = list(text_elem)
+        assert len(children) == 2
+        # Both paragraphs should have the full formatted text
+        inner0 = children[0][0]
+        assert inner0.get("font-size") == "28"
+        inner1 = children[1][0]
+        assert inner1.get("font-size") == "28"
+
+    def test_bold_spans_newline(self):
+        """Bold marker spanning newline should apply to both paragraphs."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "Start *bold\ncontinues* End", 10)
+        children = list(text_elem)
+        assert len(children) == 2
+        # Both paragraphs contain bold segments
+        para0_text = etree.tostring(children[0], encoding="unicode")
+        para1_text = etree.tostring(children[1], encoding="unicode")
+        assert "font-weight" in para0_text
+        assert "font-weight" in para1_text
+
+    def test_small_spans_newline(self):
+        """Small marker (#) spanning newline should apply to both paragraphs."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "#A few\nlines#", 10)
+        children = list(text_elem)
+        assert len(children) == 2
+        # Both paragraphs should have small font-size
+        para0_text = etree.tostring(children[0], encoding="unicode")
+        para1_text = etree.tostring(children[1], encoding="unicode")
+        assert "font-size" in para0_text
+        assert "font-size" in para1_text
+
+    def test_nested_small_italic_spans_newline(self):
+        """Nested #_text_# spanning newline should apply to both paragraphs."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "#_A few\nlines_#", 10)
+        children = list(text_elem)
+        assert len(children) == 2
+        # Paragraph 0: outer small, inner italic with full text
+        inner00 = children[0][0]
+        assert inner00.get("font-size") == "28"
+        inner01 = inner00[0]
+        assert inner01.get("font-style") == "italic"
+        # Paragraph 1: outer small, inner italic with full text
+        inner10 = children[1][0]
+        assert inner10.get("font-size") == "28"
+        inner11 = inner10[0]
+        assert inner11.get("font-style") == "italic"
+
+    def test_nested_italic_small_spans_newline(self):
+        """Nested _#text#_ spanning newline should apply to both paragraphs."""
+        from card_factory.templates.renderer import apply_formatted_text_with_paragraphs
+        svg = etree.fromstring('<svg xmlns="http://www.w3.org/2000/svg"><text id="test"><tspan>Placeholder</tspan></text></svg>')
+        text_elem = svg.find(".//{http://www.w3.org/2000/svg}text")
+        apply_formatted_text_with_paragraphs(text_elem, "_#A few\nlines#_", 10)
+        children = list(text_elem)
+        assert len(children) == 2
+        # Paragraph 0: outer italic, inner small with full text
+        inner00 = children[0][0]
+        assert inner00.get("font-style") == "italic"
+        inner01 = inner00[0]
+        assert inner01.get("font-size") == "28"
+        # Paragraph 1: outer italic, inner small with full text
+        inner10 = children[1][0]
+        assert inner10.get("font-style") == "italic"
+        inner11 = inner10[0]
+        assert inner11.get("font-size") == "28"
+
 
 class TestApplyParagraphSpacing:
     """Tests for apply_paragraph_spacing()"""
