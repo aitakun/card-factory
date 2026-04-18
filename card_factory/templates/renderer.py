@@ -451,26 +451,28 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
         if "\n" in full_seg_text:
             # Segment contains newline - split and recombine parts that follow each other
             parts = full_seg_text.split("\n")
+            import copy
             for i, part in enumerate(parts):
                 if not part:
                     continue
 
-                # Recombine: if this part has the same format as the previous one we just added,
-                # merge them instead of creating separate segments
-                if (para_segments[current_para] and
-                    para_segments[current_para][-1].get("format") == seg.get("format") and
-                    "content" not in para_segments[current_para][-1]):
-                    # Merge with previous
-                    prev_segment = para_segments[current_para][-1]
-                    prev_segment["text"] = prev_segment["text"] + "\n" + part
-                else:
-                    cloned = {"format": seg.get("format")}
-                    cloned["text"] = part
-                    if "content" in seg:
-                        # Deep copy nested content (already has newlines replaced)
-                        import copy
-                        cloned["content"] = copy.deepcopy(seg["content"])
-                    para_segments[current_para].append(cloned)
+                cloned = {"format": seg.get("format")}
+                cloned["text"] = part
+                if "content" in seg:
+                    # Split nested content at newlines too
+                    def split_nested_content(content):
+                        result = []
+                        for item in content:
+                            item_text = item.get("text", "")
+                            if "\n" in item_text:
+                                for sub in item_text.split("\n"):
+                                    if sub:
+                                        result.append({"format": item.get("format"), "text": sub})
+                            else:
+                                result.append(dict(item))
+                        return result
+                    cloned["content"] = split_nested_content(seg["content"])
+                para_segments[current_para].append(cloned)
 
                 # Only increment para if this is NOT the last part (which means there's content after it)
                 if i < len(parts) - 1:
