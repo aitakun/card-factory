@@ -409,14 +409,23 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
     # Parse markdown on full text first (before split) to handle markers that span newlines.
     # Replace newlines with || which acts as both open AND close for a "passthrough" marker.
     # This tricks the parser into treating separate paragraphs as separate markdown blocks.
-    full_text_with_markers = text.replace("\n", "||")
+    passthrough_marker = "||"
+    full_text_with_markers = text.replace("\n", passthrough_marker)
     full_segments = parse_markdown_segments(full_text_with_markers)
 
-    # Now split segments at || boundaries to get per-paragraph segments.
-    # The || gets parsed as a format=None segment which we filter out.
+    # Replace the placeholder with actual newlines in ALL segment texts (including nested content)
+    def replace_placeholder_in_segments(segments, marker):
+        for seg in segments:
+            if "text" in seg:
+                seg["text"] = seg["text"].replace(marker, "\n")
+            if "content" in seg:
+                replace_placeholder_in_segments(seg["content"], marker)
+
+    replace_placeholder_in_segments(full_segments, passthrough_marker)
+
+    # Now split segments at newline boundaries to get per-paragraph segments.
     para_segments = [[] for _ in range(num_paragraphs)]
     current_para = 0
-    passthrough_marker = "||"
 
     def collect_segment_text(seg):
         """Recursively collect all text content from a segment (including nested)."""
@@ -429,8 +438,8 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
         return texts
 
     for seg in full_segments:
-        # Skip empty passthrough markers (these just mark paragraph boundaries)
-        if seg.get("text") == passthrough_marker and seg.get("format") is None:
+        # Skip empty segments that are just newlines (created when || is replaced)
+        if seg.get("text") == "\n" and seg.get("format") is None:
             current_para += 1
             if current_para >= num_paragraphs:
                 break
@@ -439,9 +448,9 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
         seg_texts = collect_segment_text(seg)
         full_seg_text = "".join(seg_texts)
 
-        if passthrough_marker in full_seg_text:
-            # Segment contains placeholder - split and recombine parts that follow each other
-            parts = full_seg_text.split(passthrough_marker)
+        if "\n" in full_seg_text:
+            # Segment contains newline - split and recombine parts that follow each other
+            parts = full_seg_text.split("\n")
             for i, part in enumerate(parts):
                 if not part:
                     continue
@@ -458,7 +467,9 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
                     cloned = {"format": seg.get("format")}
                     cloned["text"] = part
                     if "content" in seg:
-                        cloned["content"] = seg["content"]
+                        # Deep copy nested content (already has newlines replaced)
+                        import copy
+                        cloned["content"] = copy.deepcopy(seg["content"])
                     para_segments[current_para].append(cloned)
 
                 # Only increment para if this is NOT the last part (which means there's content after it)
