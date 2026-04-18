@@ -838,7 +838,7 @@ def save_svg(tree: etree.ElementTree, output_path: str) -> None:
 
 
 def evaluate_condition(condition: str, row_data: Dict[str, Any]) -> bool:
-    """Evaluate a condition with support for ==, >, <, >=, <=.
+    """Evaluate a condition with support for ==, >, <, >=, <=, ~=.
     
     Returns True if condition passes (element should be shown),
     False if condition fails (element should be hidden).
@@ -849,12 +849,13 @@ def evaluate_condition(condition: str, row_data: Dict[str, Any]) -> bool:
         - cost==5
         - strength>3
         - amount>=10
+        - name~=Ice
     """
     if not condition:
         return True
     
-    # Pattern to match all operators: ==, >, <, >=, <=
-    match = re.match(r'^([^=]+)(>=|<=|==|>|<)(.+)$', condition.strip())
+    # Pattern to match all operators: ==, >, <, >=, <=, ~= (note: ~= must come before = to avoid = being matched first)
+    match = re.match(r'^([^=]+)(~=|>=|<=|==|>|<)(.+)$', condition.strip())
     if not match:
         print(f"Warning: Invalid condition format: '{condition}' (expected 'column==value' or 'column>value', etc.)")
         return True
@@ -887,6 +888,10 @@ def evaluate_condition(condition: str, row_data: Dict[str, Any]) -> bool:
             return actual_num >= expected_num
         elif operator == '<=':
             return actual_num <= expected_num
+    
+    # Handle contains (substring) check
+    if operator == '~=':
+        return expected in actual
     
     # For ==, keep existing string comparison (backwards compatible)
     return actual == expected

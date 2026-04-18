@@ -538,6 +538,34 @@ class TestEvaluateCondition:
         result = evaluate_condition("amount==0", {"amount": "0"})
         assert result is True
 
+    def test_contains_substring_match(self):
+        result = evaluate_condition("name~=Ice", {"name": "Icebreaker - Fracter"})
+        assert result is True
+
+    def test_contains_substring_no_match(self):
+        result = evaluate_condition("name~=Fire", {"name": "Icebreaker - Fracter"})
+        assert result is False
+
+    def test_contains_at_start(self):
+        result = evaluate_condition("name~=Ice", {"name": "Icebreaker"})
+        assert result is True
+
+    def test_contains_at_end(self):
+        result = evaluate_condition("name~=Fracter", {"name": "Icebreaker - Fracter"})
+        assert result is True
+
+    def test_contains_case_sensitive(self):
+        result = evaluate_condition("name~=ice", {"name": "Icebreaker"})
+        assert result is False
+
+    def test_contains_empty_expected(self):
+        result = evaluate_condition("name~=", {"name": "Anything"})
+        assert result is True
+
+    def test_contains_empty_actual(self):
+        result = evaluate_condition("name~=test", {"name": ""})
+        assert result is False
+
 
 class TestApplyFormattedText:
     """Tests for apply_formatted_text()"""
