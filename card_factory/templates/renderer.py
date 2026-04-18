@@ -372,7 +372,7 @@ def apply_formatted_text(element: etree.Element, text: str, small_font_size: int
 def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, paragraph_spacing: int, small_font_size: int = 28) -> None:
     """
     Apply text to element with markdown formatting AND paragraph support.
-    
+
     This function builds the entire tspan tree in one go:
     - text element
       - paragraph_tspan (data-paragraph-index="0", fill-opacity="0" or None)
@@ -380,9 +380,11 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
           - text content
       - paragraph_tspan (data-paragraph-index="1", fill-opacity="0")
         - ...
-    
+
     This avoids the complexity of trying to wrap existing tspans after they're created.
-    
+
+    Markdown markers (_italic_, *bold*, !heavy!, #small#) can span across newlines.
+
     Args:
         element: The SVG text element to apply text to
         text: Text content with markdown-like formatting
@@ -392,10 +394,10 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
     if element.tag != f"{SVG_NS}text":
         set_element_text_content(element, text)
         return
-    
+
     paragraphs = text.split('\n')
     num_paragraphs = len(paragraphs)
-    
+
     # Get base attributes from existing tspan BEFORE clearing
     base_tspan = element.find(f"{SVG_NS}tspan")
     base_attrs = {}
@@ -403,39 +405,106 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
         for attr, val in base_tspan.attrib.items():
             if attr not in ('id',):
                 base_attrs[attr] = val
-    
+
+    # Parse markdown on full text first (before split) to handle markers that span newlines.
+    # Replace newlines with || which acts as both open AND close for a "passthrough" marker.
+    # This tricks the parser into treating separate paragraphs as separate markdown blocks.
+    full_text_with_markers = text.replace("\n", "||")
+    full_segments = parse_markdown_segments(full_text_with_markers)
+
+    # Now split segments at || boundaries to get per-paragraph segments.
+    # The || gets parsed as a format=None segment which we filter out.
+    para_segments = [[] for _ in range(num_paragraphs)]
+    current_para = 0
+    passthrough_marker = "||"
+
+    def collect_segment_text(seg):
+        """Recursively collect all text content from a segment (including nested)."""
+        texts = []
+        if "text" in seg:
+            texts.append(seg["text"])
+        if "content" in seg:
+            for child in seg["content"]:
+                texts.extend(collect_segment_text(child))
+        return texts
+
+    for seg in full_segments:
+        # Skip empty passthrough markers (these just mark paragraph boundaries)
+        if seg.get("text") == passthrough_marker and seg.get("format") is None:
+            current_para += 1
+            if current_para >= num_paragraphs:
+                break
+            continue
+
+        seg_texts = collect_segment_text(seg)
+        full_seg_text = "".join(seg_texts)
+
+        if passthrough_marker in full_seg_text:
+            # Segment contains placeholder - split and recombine parts that follow each other
+            parts = full_seg_text.split(passthrough_marker)
+            for i, part in enumerate(parts):
+                if not part:
+                    continue
+
+                # Recombine: if this part has the same format as the previous one we just added,
+                # merge them instead of creating separate segments
+                if (para_segments[current_para] and
+                    para_segments[current_para][-1].get("format") == seg.get("format") and
+                    "content" not in para_segments[current_para][-1]):
+                    # Merge with previous
+                    prev_segment = para_segments[current_para][-1]
+                    prev_segment["text"] = prev_segment["text"] + "\n" + part
+                else:
+                    cloned = {"format": seg.get("format")}
+                    cloned["text"] = part
+                    if "content" in seg:
+                        cloned["content"] = seg["content"]
+                    para_segments[current_para].append(cloned)
+
+                # Only increment para if this is NOT the last part (which means there's content after it)
+                if i < len(parts) - 1:
+                    current_para += 1
+                    if current_para >= num_paragraphs:
+                        break
+        else:
+            if current_para < num_paragraphs:
+                para_segments[current_para].append(seg)
+
     # Clear existing content
     element.text = None
     for child in list(element):
         element.remove(child)
-    
+
     for p_idx in range(num_paragraphs):
         paragraph_text = paragraphs[p_idx]
-        
+        p_segments = para_segments[p_idx] if p_idx < len(para_segments) else []
+
         # Create paragraph wrapper tspan
         p_tspan = etree.SubElement(element, f"{SVG_NS}tspan")
         p_tspan.set("data-paragraph-index", str(p_idx))
-        
+
         # First paragraph is visible, others hidden
         if p_idx > 0:
             p_tspan.set("fill-opacity", "0")
-        
-        # Parse markdown and create nested tspans for this paragraph
-        segments = parse_markdown_segments(paragraph_text)
-        needs_formatting = any(s.get("format") is not None for s in segments)
-        
+
+        # Check if this paragraph's segments have formatting
+        needs_formatting = any(s.get("format") is not None for s in p_segments)
+
         # Add newline to paragraph wrapper to create vertical spacing (except first and last)
         # First paragraph starts at original position, subsequent ones need newlines
         if p_idx > 0 and p_idx < num_paragraphs:
             p_tspan.text = "\n"
-        
+
         if not needs_formatting:
             inner_tspan = etree.SubElement(p_tspan, f"{SVG_NS}tspan")
             for attr, val in base_attrs.items():
                 inner_tspan.set(attr, val)
             inner_tspan.text = paragraph_text
         else:
-            for segment in segments:
+            for segment in p_segments:
+                # Skip empty text segments
+                if segment.get("text") == "":
+                    continue
                 create_formatting_tspan(p_tspan, segment, base_attrs, small_font_size)
 
 
