@@ -68,8 +68,8 @@ def _does_text_fit(
     """Check if text fits within box at given font size.
 
     Uses character-length mapping with adjustable aggression:
-    - Higher aggression = more shrinking (more text fits at each size)
-    - Lower aggression = less shrinking (less text fits at each size)
+    - Higher aggression = less shrinking (more text fits at each size)
+    - Lower aggression = more shrinking
     
     Base thresholds (at aggression=1.0):
     - 32: <= 75 chars
@@ -77,27 +77,41 @@ def _does_text_fit(
     - 28: <= 250 chars
     - 26: <= 350 chars
     - 24: <= 450 chars
+    - 22: <= 550 chars
+    - 20: <= 650 chars
+    - 18: <= 750 chars
+    - 16: <= 850 chars
+    - 14: <= 950 chars
+    - 12: <= 1050 chars
+    - 10: <= 1150 chars
+    - 8: <= 1250 chars
     
     With aggression factor, thresholds scale proportionally.
     """
     text_len = len(text.replace('\n', ''))
     
-    # Scale thresholds by aggression factor
-    # Higher aggression = can fit more text at each size
-    if font_size == 32:
-        return text_len <= 75 * aggression
-    elif font_size == 30:
-        return text_len <= 150 * aggression
-    elif font_size == 28:
-        return text_len <= 250 * aggression
-    elif font_size == 26:
-        return text_len <= 350 * aggression
-    elif font_size == 24:
-        return text_len <= 450 * aggression
-    elif font_size == 22:
-        return text_len <= 550 * aggression
-    else:
-        return True
+    # Map each font size to its base threshold
+    thresholds = {
+        32: 75,
+        30: 150,
+        28: 250,
+        26: 350,
+        24: 450,
+        22: 550,
+        20: 650,
+        18: 750,
+        16: 850,
+        14: 950,
+        12: 1050,
+        10: 1150,
+        8: 1250,
+    }
+    
+    if font_size in thresholds:
+        return text_len <= thresholds[font_size] * aggression
+    
+    # Sizes below 8 always fit
+    return True
 
 
 def get_text_box_dimensions(tree: etree.ElementTree, element: etree.Element) -> Tuple[Optional[float], Optional[float]]:
