@@ -64,7 +64,8 @@ bindings:
     paragraph_spacing: 1
     fit: "box"
     min_font_size: 8
-    max_font_size: 32
+    max_font_size: 36
+    fit_aggression: 3
 
   - element_id: "illustrator"
     value: "{illustrator}"

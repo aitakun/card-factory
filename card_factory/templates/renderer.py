@@ -18,8 +18,8 @@ MARKERS = [
     ('#', '#', 'small'),
 ]
 
-CHAR_WIDTH_FACTOR = 0.6
-LINE_HEIGHT_FACTOR = 1.2
+CHAR_WIDTH_FACTOR = 0.30
+LINE_HEIGHT_FACTOR = 0.65
 
 
 def calculate_fitting_font_size(
@@ -28,7 +28,8 @@ def calculate_fitting_font_size(
     box_height: float,
     min_size: int = 8,
     max_size: int = 32,
-    step: int = 2
+    step: int = 2,
+    aggression: float = 1.0
 ) -> int:
     """Calculate font size that fits text within a bounding box.
 
@@ -42,6 +43,7 @@ def calculate_fitting_font_size(
         min_size: Minimum font size to allow (default: 8)
         max_size: Maximum font size to start from (default: 32)
         step: Font size decrement step (default: 2)
+        aggression: Scaling factor - higher = less shrinking (default: 1.0)
 
     Returns:
         The computed font size that fits the text
@@ -50,7 +52,7 @@ def calculate_fitting_font_size(
         return max_size
 
     for font_size in range(max_size, min_size - 1, -step):
-        if _does_text_fit(text, font_size, box_width, box_height):
+        if _does_text_fit(text, font_size, box_width, box_height, aggression):
             return font_size
 
     return min_size
@@ -60,31 +62,42 @@ def _does_text_fit(
     text: str,
     font_size: int,
     box_width: float,
-    box_height: float
+    box_height: float,
+    aggression: float = 1.0
 ) -> bool:
     """Check if text fits within box at given font size.
 
-    Uses heuristics:
-    - chars_per_line = box_width / (font_size * 0.6)
-    - max_lines = box_height / (font_size * 1.2)
+    Uses character-length mapping with adjustable aggression:
+    - Higher aggression = more shrinking (more text fits at each size)
+    - Lower aggression = less shrinking (less text fits at each size)
+    
+    Base thresholds (at aggression=1.0):
+    - 32: <= 75 chars
+    - 30: <= 150 chars
+    - 28: <= 250 chars
+    - 26: <= 350 chars
+    - 24: <= 450 chars
+    
+    With aggression factor, thresholds scale proportionally.
     """
-    char_width = font_size * CHAR_WIDTH_FACTOR
-    line_height = font_size * LINE_HEIGHT_FACTOR
-
-    chars_per_line = box_width / char_width if char_width > 0 else 0
-    max_lines = box_height / line_height if line_height > 0 else 0
-
-    lines = text.split('\n')
-    total_wrapped_lines = 0
-
-    for line in lines:
-        if not line:
-            total_wrapped_lines += 1
-        else:
-            wrapped = math.ceil(len(line) / chars_per_line) if chars_per_line > 0 else float('inf')
-            total_wrapped_lines += wrapped
-
-    return total_wrapped_lines <= max_lines
+    text_len = len(text.replace('\n', ''))
+    
+    # Scale thresholds by aggression factor
+    # Higher aggression = can fit more text at each size
+    if font_size == 32:
+        return text_len <= 75 * aggression
+    elif font_size == 30:
+        return text_len <= 150 * aggression
+    elif font_size == 28:
+        return text_len <= 250 * aggression
+    elif font_size == 26:
+        return text_len <= 350 * aggression
+    elif font_size == 24:
+        return text_len <= 450 * aggression
+    elif font_size == 22:
+        return text_len <= 550 * aggression
+    else:
+        return True
 
 
 def get_text_box_dimensions(tree: etree.ElementTree, element: etree.Element) -> Tuple[Optional[float], Optional[float]]:
@@ -921,17 +934,27 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
         if prefix and value:
             value = prefix + value
         
-        # Calculate fitting font size if fit: "box" is specified
+# Calculate fitting font size if fit: "box" is specified
         fit_mode = binding.get("fit")
+        computed_font_size = None
         if fit_mode == "box":
             min_size = binding.get("min_font_size", 8)
             max_size = binding.get("max_font_size", 32)
+            aggression = binding.get("fit_aggression", 1.0)
             box_width, box_height = get_text_box_dimensions(tree, element)
             if box_width and box_height:
-                fitted_size = calculate_fitting_font_size(value, box_width, box_height, min_size, max_size)
-                element.set("font-size", str(fitted_size))
+                computed_font_size = calculate_fitting_font_size(value, box_width, box_height, min_size, max_size, aggression=aggression)
+                element.set("font-size", str(computed_font_size))
+                # Also update style attribute (takes precedence in SVG)
+                style = element.get("style", "")
+                if style:
+                    new_style = re.sub(r'font-size:\s*[\d.]+px', f'font-size:{computed_font_size}px', style)
+                    element.set("style", new_style)
         
         # Apply formatted text to element (with markdown support)
+        # Note: small_font_size (for #small# formatting) uses the default parameter,
+        # not the computed font-size. This preserves existing behavior where
+        # #small# text has its own fixed size. Relative scaling can be added later.
         paragraph_spacing = binding.get("paragraph_spacing")
         if paragraph_spacing and isinstance(paragraph_spacing, int) and paragraph_spacing > 0:
             # Use new function that builds entire tspan tree at once
