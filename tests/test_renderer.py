@@ -21,6 +21,9 @@ from card_factory.templates.renderer import (
     create_formatting_tspan,
     MARKERS,
     SVG_NS,
+    calculate_fitting_font_size,
+    _does_text_fit,
+    get_text_box_dimensions,
 )
 
 
@@ -1014,6 +1017,118 @@ class TestModifyTranslateY:
         result = modify_translate_y("matrix(1,0,0,1,0,10)", 10)
         assert "matrix" in result
         assert result.endswith(",20)")
+
+
+class TestCalculateFittingFontSize:
+    """Tests for calculate_fitting_font_size() - the shrink-to-fit algorithm"""
+
+    def test_short_text_fits_at_max(self):
+        """Short text should fit at max size"""
+        size = calculate_fitting_font_size("Hello", 100, 50, min_size=8, max_size=32)
+        assert size == 32
+
+    def test_long_text_shrinks(self):
+        """Long text should shrink to fit"""
+        size = calculate_fitting_font_size("A" * 200, 100, 50, min_size=8, max_size=32)
+        assert size < 32
+
+    def test_very_long_text_shrinks_to_min(self):
+        """Very long text should shrink to minimum"""
+        size = calculate_fitting_font_size("A" * 1000, 100, 50, min_size=8, max_size=32)
+        assert size == 8
+
+    def test_empty_text_returns_max(self):
+        """Empty text should return max size"""
+        size = calculate_fitting_font_size("", 100, 50, min_size=8, max_size=32)
+        assert size == 32
+
+    def test_zero_box_returns_max(self):
+        """Zero box should return max size"""
+        size = calculate_fitting_font_size("Hello", 0, 0, min_size=8, max_size=32)
+        assert size == 32
+
+    def test_none_box_returns_max(self):
+        """None box should return max size"""
+        size = calculate_fitting_font_size("Hello", None, None, min_size=8, max_size=32)
+        assert size == 32
+
+    def test_multiline_text(self):
+        """Multiline text should account for newlines"""
+        text = "Line 1\nLine 2\nLine 3"
+        size = calculate_fitting_font_size(text, 100, 50, min_size=8, max_size=32)
+        assert size < 32
+
+    def test_tall_multiline_shrinks(self):
+        """Tall multiline text should shrink"""
+        text = "A\nB\nC\nD\nE\nF\nG\nH"
+        size = calculate_fitting_font_size(text, 100, 30, min_size=8, max_size=32)
+        assert size < 32
+
+    def test_step_affects_result(self):
+        """Step parameter affects results"""
+        text = "A" * 100
+        size_step2 = calculate_fitting_font_size(text, 100, 50, min_size=8, max_size=32, step=2)
+        size_step4 = calculate_fitting_font_size(text, 100, 50, min_size=8, max_size=32, step=4)
+        assert size_step2 >= size_step4
+
+
+class TestDoesTextFit:
+    """Tests for _does_text_fit() helper"""
+
+    def test_short_text_fits(self):
+        """Short text should fit"""
+        assert _does_text_fit("Hello", 10, 100, 50) is True
+
+    def test_long_text_does_not_fit(self):
+        """Long text should not fit"""
+        result = _does_text_fit("A" * 500, 10, 100, 50)
+        assert result is False
+
+    def test_tall_text_does_not_fit(self):
+        """Many lines should not fit in small height"""
+        result = _does_text_fit("X\nX\nX\nX\nX", 10, 100, 20)
+        assert result is False
+
+
+class TestGetTextBoxDimensions:
+    """Tests for get_text_box_dimensions()"""
+
+    def test_finds_box_from_shape_inside(self):
+        """Should find box from shape-inside in style"""
+        svg = '''<?xml version="1.0"?>
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <rect id="text-box" width="100" height="50"/>
+            <text id="body" style="shape-inside:url(#text-box)">Text</text>
+        </svg>'''
+        tree = etree.fromstring(svg)
+        text_elem = tree.find(".//{http://www.w3.org/2000/svg}text[@id='body']")
+        w, h = get_text_box_dimensions(tree, text_elem)
+        assert w == 100.0
+        assert h == 50.0
+
+    def test_no_shape_inside_returns_none(self):
+        """Should return None if no shape-inside"""
+        svg = '''<?xml version="1.0"?>
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <text id="body">Text</text>
+        </svg>'''
+        tree = etree.fromstring(svg)
+        text_elem = tree.find(".//{http://www.w3.org/2000/svg}text[@id='body']")
+        w, h = get_text_box_dimensions(tree, text_elem)
+        assert w is None
+        assert h is None
+
+    def test_missing_rect_returns_none(self):
+        """Should return None if rect not found"""
+        svg = '''<?xml version="1.0"?>
+        <svg xmlns="http://www.w3.org/2000/svg">
+            <text id="body" style="shape-inside:url(#missing)">Text</text>
+        </svg>'''
+        tree = etree.fromstring(svg)
+        text_elem = tree.find(".//{http://www.w3.org/2000/svg}text[@id='body']")
+        w, h = get_text_box_dimensions(tree, text_elem)
+        assert w is None
+        assert h is None
 
 
 class TestRenderTemplateParagraphSpacing:

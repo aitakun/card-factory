@@ -1,7 +1,8 @@
 """SVG Template rendering and value substitution"""
 
+import math
 import re
-from typing import Dict, Any, List, Tuple, Set
+from typing import Dict, Any, List, Tuple, Set, Optional
 from lxml import etree
 from pathlib import Path
 
@@ -16,6 +17,115 @@ MARKERS = [
     ('_', '_', 'italic'),
     ('#', '#', 'small'),
 ]
+
+CHAR_WIDTH_FACTOR = 0.6
+LINE_HEIGHT_FACTOR = 1.2
+
+
+def calculate_fitting_font_size(
+    text: str,
+    box_width: float,
+    box_height: float,
+    min_size: int = 8,
+    max_size: int = 32,
+    step: int = 2
+) -> int:
+    """Calculate font size that fits text within a bounding box.
+
+    Uses a shrink-to-fit algorithm: starts at max_size and decreases
+    until text fits or min_size is reached.
+
+    Args:
+        text: The text content to fit
+        box_width: Width of the bounding box in SVG units
+        box_height: Height of the bounding box in SVG units
+        min_size: Minimum font size to allow (default: 8)
+        max_size: Maximum font size to start from (default: 32)
+        step: Font size decrement step (default: 2)
+
+    Returns:
+        The computed font size that fits the text
+    """
+    if not text or not box_width or not box_height or box_width <= 0 or box_height <= 0:
+        return max_size
+
+    for font_size in range(max_size, min_size - 1, -step):
+        if _does_text_fit(text, font_size, box_width, box_height):
+            return font_size
+
+    return min_size
+
+
+def _does_text_fit(
+    text: str,
+    font_size: int,
+    box_width: float,
+    box_height: float
+) -> bool:
+    """Check if text fits within box at given font size.
+
+    Uses heuristics:
+    - chars_per_line = box_width / (font_size * 0.6)
+    - max_lines = box_height / (font_size * 1.2)
+    """
+    char_width = font_size * CHAR_WIDTH_FACTOR
+    line_height = font_size * LINE_HEIGHT_FACTOR
+
+    chars_per_line = box_width / char_width if char_width > 0 else 0
+    max_lines = box_height / line_height if line_height > 0 else 0
+
+    lines = text.split('\n')
+    total_wrapped_lines = 0
+
+    for line in lines:
+        if not line:
+            total_wrapped_lines += 1
+        else:
+            wrapped = math.ceil(len(line) / chars_per_line) if chars_per_line > 0 else float('inf')
+            total_wrapped_lines += wrapped
+
+    return total_wrapped_lines <= max_lines
+
+
+def get_text_box_dimensions(tree: etree.ElementTree, element: etree.Element) -> Tuple[Optional[float], Optional[float]]:
+    """Find bounding box dimensions from text element's shape-inside attribute.
+
+    Looks for shape-inside:url(#rectId) in the element's style, then finds
+    the rect element with matching id and returns (width, height).
+
+    Args:
+        tree: The SVG element tree
+        element: The text element to find box for
+
+    Returns:
+        Tuple of (box_width, box_height) or (None, None) if not found
+    """
+    if element is None:
+        return None, None
+
+    style = element.get("style", "")
+    if not style:
+        return None, None
+
+    match = re.search(r'shape-inside:\s*url\(#([^)]+)\)', style)
+    if not match:
+        return None, None
+
+    rect_id = match.group(1)
+    rect = tree.find(f".//*[@id='{rect_id}']")
+
+    if rect is None:
+        return None, None
+
+    width = rect.get("width")
+    height = rect.get("height")
+
+    try:
+        w = float(width) if width else None
+        h = float(height) if height else None
+        return (w, h) if w is not None and h is not None else (None, None)
+    except (ValueError, TypeError):
+        return None, None
 
 
 def get_format_attributes(fmt: str, small_font_size: int = 28) -> Dict[str, str]:
@@ -810,6 +920,16 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
         prefix = binding.get("prefix")
         if prefix and value:
             value = prefix + value
+        
+        # Calculate fitting font size if fit: "box" is specified
+        fit_mode = binding.get("fit")
+        if fit_mode == "box":
+            min_size = binding.get("min_font_size", 8)
+            max_size = binding.get("max_font_size", 32)
+            box_width, box_height = get_text_box_dimensions(tree, element)
+            if box_width and box_height:
+                fitted_size = calculate_fitting_font_size(value, box_width, box_height, min_size, max_size)
+                element.set("font-size", str(fitted_size))
         
         # Apply formatted text to element (with markdown support)
         paragraph_spacing = binding.get("paragraph_spacing")

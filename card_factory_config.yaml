@@ -62,6 +62,9 @@ bindings:
   - element_id: "text-body"
     value: "{text}\n#_{flavor}_#"
     paragraph_spacing: 1
+    fit: "box"
+    min_font_size: 8
+    max_font_size: 32
 
   - element_id: "illustrator"
     value: "{illustrator}"
