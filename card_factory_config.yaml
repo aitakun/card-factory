@@ -65,7 +65,7 @@ bindings:
     fit: "box"
     min_font_size: 8
     max_font_size: 36
-    fit_aggression: 3
+    fit_aggression: 0.1
 
   - element_id: "illustrator"
     value: "{illustrator}"
@@ -140,7 +140,7 @@ color_schemes:
 
 # Formatting settings
 formatting:
-  small_font_size: 28  # Font size in pixels for #small text# (default: 28)
+  fit_scale_small: 0.85  # Scale factor for #small# text relative to computed base font-size
 
 # Substitutions: used to display symbols in place of placeholders
 substitutions:

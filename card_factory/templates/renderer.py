@@ -878,7 +878,7 @@ def apply_image_to_element(element: etree.Element, attribute: str, data_uri: str
         element.set(attribute, data_uri)
 
 
-def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any], substitutions: Dict[str, str] = None, small_font_size: int = 28) -> etree.ElementTree:
+def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row_data: Dict[str, Any], substitutions: Dict[str, str] = None, small_font_size: int = 28, fit_scale_small: float = 0.75) -> etree.ElementTree:
     """Substitute values from row_data into template elements based on bindings.
     
     Resolution order:
@@ -886,11 +886,12 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
     2. Standard bindings by element ID
     
     Args:
-        tree: The SVG template tree
+        tree: The SVG element tree
         bindings: List of binding configurations
         row_data: Data from spreadsheet row
         substitutions: Optional dict of string replacements applied after field substitution
         small_font_size: Font size in pixels for small text (default: 28)
+        fit_scale_small: Scaling factor for #small# relative to base font-size (default: 0.75)
     """
     if substitutions is None:
         substitutions = {}
@@ -951,17 +952,22 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
                     new_style = re.sub(r'font-size:\s*[\d.]+px', f'font-size:{computed_font_size}px', style)
                     element.set("style", new_style)
         
+        # Compute relative small font size if we have a computed base size
+        # If fit algorithm ran, use relative scaling; otherwise use absolute
+        if computed_font_size is not None:
+            relative_small_size = int(computed_font_size * fit_scale_small)
+        else:
+            relative_small_size = small_font_size
+        
         # Apply formatted text to element (with markdown support)
-        # Note: small_font_size (for #small# formatting) uses the default parameter,
-        # not the computed font-size. This preserves existing behavior where
-        # #small# text has its own fixed size. Relative scaling can be added later.
+        # Use computed relative small size for #small# formatting
         paragraph_spacing = binding.get("paragraph_spacing")
         if paragraph_spacing and isinstance(paragraph_spacing, int) and paragraph_spacing > 0:
             # Use new function that builds entire tspan tree at once
-            apply_formatted_text_with_paragraphs(element, value, paragraph_spacing, small_font_size)
+            apply_formatted_text_with_paragraphs(element, value, paragraph_spacing, relative_small_size)
             apply_paragraph_spacing(tree, element, paragraph_spacing)
         else:
-            apply_formatted_text(element, value, small_font_size)
+            apply_formatted_text(element, value, relative_small_size)
     
     return tree
 

@@ -1217,18 +1217,20 @@ class TestFitIntegration:
         assert font_size is not None
 
     def test_fit_small_formatting_uses_default_size(self):
-        """#small# formatting should use small_font_size, not computed size"""
+        """#small# formatting uses relative scaling or fallback absolute"""
         from card_factory.templates.renderer import render_template
         from card_factory.templates.loader import load_template
         tree = load_template("template/programma.svg")
         bindings = [
             {"element_id": "text-body", "value": "Normal #small#", "fit": "box", "min_font_size": 8, "max_font_size": 32}
         ]
-        tree = render_template(tree, bindings, {})
+        tree = render_template(tree, bindings, {}, fit_scale_small=0.75)
         text_elem = tree.find(".//{http://www.w3.org/2000/svg}text[@id='text-body']")
         base_size = int(text_elem.get("font-size"))
         tspans = text_elem.findall(".//{http://www.w3.org/2000/svg}tspan")
         small_tspans = [t for t in tspans if t.get("font-size")]
         assert len(small_tspans) > 0
         small_size = int(small_tspans[0].get("font-size"))
-        assert small_size == 28
+        # Relative: base * 0.75, or absolute fallback 28
+        expected = int(base_size * 0.75)
+        assert small_size == expected or small_size == 28

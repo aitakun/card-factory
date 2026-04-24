@@ -24,6 +24,7 @@ class CardFactoryConfig:
         self.preview_width: int = 800
         self.spreadsheet_cleanup: bool = True
         self.small_font_size: int = 28
+        self.fit_scale_small: float = 0.75
         
         if config_path:
             self.load(config_path)
@@ -96,6 +97,7 @@ class CardFactoryConfig:
             formatting_config = config['formatting']
             if isinstance(formatting_config, dict):
                 self.small_font_size = formatting_config.get('small_font_size', self.small_font_size)
+                self.fit_scale_small = formatting_config.get('fit_scale_small', self.fit_scale_small)
     
     def get_bindings(self) -> List[Dict[str, Any]]:
         """Get the list of bindings"""
@@ -124,6 +126,10 @@ class CardFactoryConfig:
     def get_small_font_size(self) -> int:
         """Get the font size for small text formatting (#text#)."""
         return self.small_font_size
+    
+    def get_fit_scale_small(self) -> float:
+        """Get the scaling factor for small text relative to base font-size."""
+        return self.fit_scale_small
     
     def should_include_row(self, row: Dict[str, Any]) -> bool:
         """Check if a row should be included based on filter.

@@ -106,11 +106,14 @@ class CardBindingEngine:
         bindings = self.get_bindings()
         substitutions = {}
         small_font_size = 28
+        fit_scale_small = 0.75
         if self.config and hasattr(self.config, 'get_substitutions'):
             substitutions = self.config.get_substitutions()
         if self.config and hasattr(self.config, 'get_small_font_size'):
             small_font_size = self.config.get_small_font_size()
-        tree = render_template(tree, bindings, row_data, substitutions, small_font_size)
+        if self.config and hasattr(self.config, 'get_fit_scale_small'):
+            fit_scale_small = self.config.get_fit_scale_small()
+        tree = render_template(tree, bindings, row_data, substitutions, small_font_size, fit_scale_small)
         
         # Apply color schemes
         if self.config and hasattr(self.config, 'get_color_schemes'):
