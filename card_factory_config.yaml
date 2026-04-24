@@ -44,10 +44,16 @@ bindings:
   - element_id: "cost"
     value: "{cost}"
 
+  - element_id: "cost_shadow"
+    value: "{cost}"
+
   - element_id: "mu"
     value: "{mu}"
 
   - element_id: "strength"
+    value: "{strength}"
+
+  - element_id: "strength_shadow"
     value: "{strength}"
 
   - element_id: "trash_cost"
