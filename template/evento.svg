@@ -24,9 +24,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#505050"
      inkscape:document-units="mm"
-     inkscape:zoom="2.1327019"
-     inkscape:cx="165.51774"
-     inkscape:cy="227.17662"
+     inkscape:zoom="3.016096"
+     inkscape:cx="72.113089"
+     inkscape:cy="146.04973"
      inkscape:window-width="2484"
      inkscape:window-height="1355"
      inkscape:window-x="76"
@@ -122,7 +122,7 @@
      id="defs1"><linearGradient
        id="light-color"
        inkscape:swatch="solid"
-       gradientTransform="matrix(4.3806305e-5,0,0,4.3806305e-5,312.00953,19.388442)"><stop
+       gradientTransform="matrix(4.3806305e-5,0,0,4.3806305e-5,303.15806,19.492312)"><stop
          style="stop-color:#75cbff;stop-opacity:1;"
          offset="0"
          id="stop126" /></linearGradient><linearGradient
@@ -379,7 +379,11 @@
            style="font-style:normal;font-variant:small-caps;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect403);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.55743757;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
              x="491.33789"
              y="684.86424"
-             id="tspan12">Card Name</tspan></text></g><g
+             id="tspan12">Card Name</tspan></text></g><path
+         style="opacity:0.4;fill:url(#light-color);stroke:none;stroke-width:0.349999;stroke-miterlimit:40;paint-order:stroke fill markers"
+         d="m 287.34063,17.764709 2.51604,2.983797 -2.51604,2.983798 h 1.77976 l 1.27048,-0.464021 0.82498,-0.948291 0.28512,-1.675482 -0.36437,-1.730584 -0.92348,-0.994077 -1.09273,-0.15514 z"
+         id="path3"
+         sodipodi:nodetypes="ccccccccccc" /><g
          id="g366"
          transform="matrix(0.25665947,0,0,0.25665947,191.42089,19.525457)"><ellipse
            style="mix-blend-mode:normal;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:5;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter2)"
@@ -453,7 +457,4 @@
          transform="rotate(-45)" /><path
          id="path10"
          style="opacity:0.5;fill:url(#light-color);stroke:none;stroke-width:0.499999;stroke-linecap:round;stroke-dasharray:none"
-         d="M 236.38767 65.453788 L 236.38767 66.395332 L 237.06049 66.395332 L 237.06049 65.453788 L 236.38767 65.453788 z M 237.446 65.453788 L 237.446 66.395332 L 272.03355 66.395332 L 272.03355 66.099743 L 252.09214 66.099743 L 251.44618 65.453788 L 237.446 65.453788 z " /><path
-         style="fill:#000000;stroke:none;stroke-width:0.349999"
-         d="m 231.61563,16.739341 -1.03306,3.855427 0.93208,0.24975 -1.22605,4.575671 -8.47693,2.996076 0.37853,-11.750363 9.64965,-3.135938 z"
-         id="path1" /></g></g></svg>
+         d="M 236.38767 65.453788 L 236.38767 66.395332 L 237.06049 66.395332 L 237.06049 65.453788 L 236.38767 65.453788 z M 237.446 65.453788 L 237.446 66.395332 L 272.03355 66.395332 L 272.03355 66.099743 L 252.09214 66.099743 L 251.44618 65.453788 L 237.446 65.453788 z " /></g></g></svg>
