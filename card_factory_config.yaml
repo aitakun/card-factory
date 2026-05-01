@@ -63,8 +63,8 @@ bindings:
     value: "{text}\n#_{flavor}_#"
     paragraph_spacing: 1
     fit: "box"
-    fit_aggression: 2.5
-    max_font_size: 64
+    fit_aggression: 1
+    max_font_size: 38
 
   - element_id: "illustrator"
     value: "{illustrator}"

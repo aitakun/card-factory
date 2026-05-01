@@ -52,7 +52,7 @@ def calculate_fitting_font_size(
         return max_size
 
     for font_size in range(max_size, min_size - 1, -step):
-        if _does_text_fit(text, font_size, box_width, box_height, aggression):
+        if _does_text_fit(text, font_size, box_width, box_height, max_size, aggression):
             return font_size
 
     return min_size
@@ -63,24 +63,31 @@ def _does_text_fit(
     font_size: int,
     box_width: float,
     box_height: float,
+    max_size: int = 32,
     aggression: float = 1.0
 ) -> bool:
     """Check if text fits within box at given font size.
 
     Uses a linear formula: threshold increases by 100 chars for every 2px decrease in font size.
     
-    At aggression=1.0:
+    At aggression=1.0 and max_size=32:
     - 32px: 75 chars
     - 30px: 175 chars  
     - 28px: 275 chars
     - etc. (100 more chars per 2px step)
     
+    At aggression=1.0 and max_size=64:
+    - 64px: 75 chars
+    - 62px: 175 chars
+    - 60px: 275 chars
+    - etc.
+    
     Aggression scales the threshold proportionally.
     """
     text_len = len(text.replace('\n', ''))
     
-    # Base formula: 75 chars at 32px, +100 chars per 2px step down
-    base_threshold = 75 + (32 - font_size) * 50
+    # Base formula: 75 chars at max_size, +100 chars per 2px step down
+    base_threshold = 75 + (max_size - font_size) * 50
     
     # Apply aggression (higher = more chars fit = less shrinking)
     max_chars = base_threshold * aggression
