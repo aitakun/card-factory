@@ -23,6 +23,7 @@ from card_factory.templates.renderer import (
     SVG_NS,
     calculate_fitting_font_size,
     _does_text_fit,
+    _calculate_weighted_length,
     get_text_box_dimensions,
 )
 
@@ -1063,6 +1064,38 @@ class TestCalculateFittingFontSize:
         assert size_step2 >= size_step4
 
 
+class TestCalculateWeightedLength:
+    """Tests for _calculate_weighted_length() helper"""
+
+    def test_no_markers(self):
+        assert _calculate_weighted_length("Hello world") == 11.0
+
+    def test_empty_string(self):
+        assert _calculate_weighted_length("") == 0.0
+
+    def test_small_text_weighted(self):
+        assert _calculate_weighted_length("Hello #small#", small_weight=0.75) == pytest.approx(6 + 5 * 0.75)
+
+    def test_only_small_text(self):
+        assert _calculate_weighted_length("#flavor#", small_weight=0.5) == pytest.approx(6 * 0.5)
+
+    def test_multiple_small_sections(self):
+        assert _calculate_weighted_length("A#B#C#D#E", small_weight=0.5) == pytest.approx(1 + 0.5 + 1 + 0.5 + 1)
+
+    def test_newlines_ignored(self):
+        assert _calculate_weighted_length("AB\nCD#EF#\nGH", small_weight=0.5) == pytest.approx(4 + 2 * 0.5 + 2)
+
+    def test_markers_not_counted(self):
+        assert _calculate_weighted_length("AB##", small_weight=0.5) == pytest.approx(2)
+
+    def test_unclosed_marker(self):
+        assert _calculate_weighted_length("Hello#world", small_weight=0.5) == pytest.approx(5 + 5 * 0.5)
+
+    def test_default_weight_equals_raw_length(self):
+        text = "Hello #small# world"
+        assert _calculate_weighted_length(text) == len(text.replace('\n', '').replace('#', ''))
+
+
 class TestDoesTextFit:
     """Tests for _does_text_fit() helper"""
 
@@ -1080,6 +1113,21 @@ class TestDoesTextFit:
         """Very long text should fit at small font size"""
         result = _does_text_fit("A" * 500, 16, 100, 50)
         assert result is True
+
+    def test_small_markers_reduce_effective_length(self):
+        """Text with ## markers should weigh less with small_weight < 1.0"""
+        text = "AAAAAAAAAA#BBBBBBBBBB#"
+        result_plain = _does_text_fit(text, 32, 100, 50, small_weight=1.0)
+        result_weighted = _does_text_fit(text, 32, 100, 50, small_weight=0.5)
+        assert result_weighted >= result_plain
+
+    def test_small_weight_allows_larger_font(self):
+        """With small_weight, text with ## should fit at same size as shorter plain text"""
+        text_small = "AAAAAAAAAA#BBBBBBBBBB#"
+        text_plain = "AAAAAAAAAAAAAAAA"
+        result_small = _does_text_fit(text_small, 32, 100, 50, small_weight=0.5)
+        result_plain = _does_text_fit(text_plain, 32, 100, 50)
+        assert result_small == result_plain
 
 
 class TestGetTextBoxDimensions:
