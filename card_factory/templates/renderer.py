@@ -29,8 +29,7 @@ def calculate_fitting_font_size(
     min_size: int = 8,
     max_size: int = 32,
     step: int = 2,
-    aggression: float = 1.0,
-    small_weight: float = 1.0
+    aggression: float = 1.0
 ) -> int:
     """Calculate font size that fits text within a bounding box.
 
@@ -38,14 +37,13 @@ def calculate_fitting_font_size(
     until text fits or min_size is reached.
 
     Args:
-        text: The text content to fit (supports ## markers for small text)
+        text: The text content to fit
         box_width: Width of the bounding box in SVG units
         box_height: Height of the bounding box in SVG units
         min_size: Minimum font size to allow (default: 8)
         max_size: Maximum font size to start from (default: 32)
         step: Font size decrement step (default: 2)
         aggression: Scaling factor - higher = less shrinking (default: 1.0)
-        small_weight: Weight for ## text characters (default: 1.0)
 
     Returns:
         The computed font size that fits the text
@@ -54,37 +52,10 @@ def calculate_fitting_font_size(
         return max_size
 
     for font_size in range(max_size, min_size - 1, -step):
-        if _does_text_fit(text, font_size, box_width, box_height, max_size, aggression, small_weight):
+        if _does_text_fit(text, font_size, box_width, box_height, aggression):
             return font_size
 
     return min_size
-
-
-def _calculate_weighted_length(text: str, small_weight: float = 1.0) -> float:
-    """Calculate weighted character length for fit algorithm.
-
-    Characters inside ## markers count as small_weight instead of 1.0.
-    The # markers themselves are not counted.
-    Newlines are stripped (same as original behavior).
-    Simple toggle - no nesting support.
-
-    Args:
-        text: Text content that may contain #small# markers
-        small_weight: Weight for characters inside ## (default: 1.0 = no weighting)
-
-    Returns:
-        Weighted character count as float
-    """
-    text = text.replace('\n', '')
-    parts = text.split('#')
-    result = 0.0
-    # Splitting "a#b#c" gives ['a', 'b', 'c'] - even indices are normal, odd are small
-    for i, part in enumerate(parts):
-        if i % 2 == 0:
-            result += len(part)
-        else:
-            result += len(part) * small_weight
-    return result
 
 
 def _does_text_fit(
@@ -92,38 +63,29 @@ def _does_text_fit(
     font_size: int,
     box_width: float,
     box_height: float,
-    max_size: int = 32,
-    aggression: float = 1.0,
-    small_weight: float = 1.0
+    aggression: float = 1.0
 ) -> bool:
     """Check if text fits within box at given font size.
 
     Uses a linear formula: threshold increases by 100 chars for every 2px decrease in font size.
     
-    At aggression=1.0 and max_size=32:
+    At aggression=1.0:
     - 32px: 75 chars
     - 30px: 175 chars  
     - 28px: 275 chars
     - etc. (100 more chars per 2px step)
     
-    At aggression=1.0 and max_size=64:
-    - 64px: 75 chars
-    - 62px: 175 chars
-    - 60px: 275 chars
-    - etc.
-    
     Aggression scales the threshold proportionally.
-    Characters inside ## markers are weighted by small_weight.
     """
-    weighted_len = _calculate_weighted_length(text, small_weight)
+    text_len = len(text.replace('\n', ''))
     
-    # Base formula: 75 chars at max_size, +100 chars per 2px step down
-    base_threshold = 75 + (max_size - font_size) * 50
+    # Base formula: 75 chars at 32px, +100 chars per 2px step down
+    base_threshold = 75 + (32 - font_size) * 50
     
     # Apply aggression (higher = more chars fit = less shrinking)
     max_chars = base_threshold * aggression
     
-    return weighted_len <= max_chars
+    return text_len <= max_chars
 
 
 def get_text_box_dimensions(tree: etree.ElementTree, element: etree.Element) -> Tuple[Optional[float], Optional[float]]:
@@ -970,7 +932,7 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
             aggression = binding.get("fit_aggression", 1.0)
             box_width, box_height = get_text_box_dimensions(tree, element)
             if box_width and box_height:
-                computed_font_size = calculate_fitting_font_size(value, box_width, box_height, min_size, max_size, aggression=aggression, small_weight=fit_scale_small)
+                computed_font_size = calculate_fitting_font_size(value, box_width, box_height, min_size, max_size, aggression=aggression)
                 element.set("font-size", str(computed_font_size))
                 # Also update style attribute (takes precedence in SVG)
                 style = element.get("style", "")
