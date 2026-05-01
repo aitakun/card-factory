@@ -29,7 +29,8 @@ def calculate_fitting_font_size(
     min_size: int = 8,
     max_size: int = 32,
     step: int = 2,
-    aggression: float = 1.0
+    aggression: float = 1.0,
+    small_weight: float = 1.0
 ) -> int:
     """Calculate font size that fits text within a bounding box.
 
@@ -37,13 +38,14 @@ def calculate_fitting_font_size(
     until text fits or min_size is reached.
 
     Args:
-        text: The text content to fit
+        text: The text content to fit (supports ## markers for small text)
         box_width: Width of the bounding box in SVG units
         box_height: Height of the bounding box in SVG units
         min_size: Minimum font size to allow (default: 8)
         max_size: Maximum font size to start from (default: 32)
         step: Font size decrement step (default: 2)
         aggression: Scaling factor - higher = less shrinking (default: 1.0)
+        small_weight: Weight for ## text characters (default: 1.0)
 
     Returns:
         The computed font size that fits the text
@@ -52,10 +54,37 @@ def calculate_fitting_font_size(
         return max_size
 
     for font_size in range(max_size, min_size - 1, -step):
-        if _does_text_fit(text, font_size, box_width, box_height, aggression):
+        if _does_text_fit(text, font_size, box_width, box_height, max_size, aggression, small_weight):
             return font_size
 
     return min_size
+
+
+def _calculate_weighted_length(text: str, small_weight: float = 1.0) -> float:
+    """Calculate weighted character length for fit algorithm.
+
+    Characters inside ## markers count as small_weight instead of 1.0.
+    The # markers themselves are not counted.
+    Newlines are stripped (same as original behavior).
+    Simple toggle - no nesting support.
+
+    Args:
+        text: Text content that may contain #small# markers
+        small_weight: Weight for characters inside ## (default: 1.0 = no weighting)
+
+    Returns:
+        Weighted character count as float
+    """
+    text = text.replace('\n', '')
+    parts = text.split('#')
+    result = 0.0
+    # Splitting "a#b#c" gives ['a', 'b', 'c'] - even indices are normal, odd are small
+    for i, part in enumerate(parts):
+        if i % 2 == 0:
+            result += len(part)
+        else:
+            result += len(part) * small_weight
+    return result
 
 
 def _does_text_fit(
@@ -63,29 +92,38 @@ def _does_text_fit(
     font_size: int,
     box_width: float,
     box_height: float,
-    aggression: float = 1.0
+    max_size: int = 32,
+    aggression: float = 1.0,
+    small_weight: float = 1.0
 ) -> bool:
     """Check if text fits within box at given font size.
 
     Uses a linear formula: threshold increases by 100 chars for every 2px decrease in font size.
     
-    At aggression=1.0:
+    At aggression=1.0 and max_size=32:
     - 32px: 75 chars
     - 30px: 175 chars  
     - 28px: 275 chars
     - etc. (100 more chars per 2px step)
     
-    Aggression scales the threshold proportionally.
-    """
-    text_len = len(text.replace('\n', ''))
+    At aggression=1.0 and max_size=64:
+    - 64px: 75 chars
+    - 62px: 175 chars
+    - 60px: 275 chars
+    - etc.
     
-    # Base formula: 75 chars at 32px, +100 chars per 2px step down
-    base_threshold = 75 + (32 - font_size) * 50
+    Aggression scales the threshold proportionally.
+    Characters inside ## markers are weighted by small_weight.
+    """
+    weighted_len = _calculate_weighted_length(text, small_weight)
+    
+    # Base formula: 75 chars at max_size, +100 chars per 2px step down
+    base_threshold = 75 + (max_size - font_size) * 50
     
     # Apply aggression (higher = more chars fit = less shrinking)
     max_chars = base_threshold * aggression
     
-    return text_len <= max_chars
+    return weighted_len <= max_chars
 
 
 def get_text_box_dimensions(tree: etree.ElementTree, element: etree.Element) -> Tuple[Optional[float], Optional[float]]:
@@ -486,10 +524,10 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
     
     This function builds the entire tspan tree in one go:
     - text element
-      - paragraph_tspan (data-paragraph-index="0", fill-opacity="0" or None)
+      - paragraph_tspan (data-paragraph-index="0", fill-opacity/stroke-opacity="0" or None)
         - markdown_tspan (with formatting from *bold*, _italic_, !heavy!, #small#)
           - text content
-      - paragraph_tspan (data-paragraph-index="1", fill-opacity="0")
+      - paragraph_tspan (data-paragraph-index="1", fill-opacity/stroke-opacity="0")
         - ...
     
     This avoids the complexity of trying to wrap existing tspans after they're created.
@@ -530,6 +568,7 @@ def apply_formatted_text_with_paragraphs(element: etree.Element, text: str, para
         # First paragraph is visible, others hidden
         if p_idx > 0:
             p_tspan.set("fill-opacity", "0")
+            p_tspan.set("stroke-opacity", "0")
         
         # Parse markdown and create nested tspans for this paragraph
         segments = parse_markdown_segments(paragraph_text)
@@ -660,7 +699,7 @@ def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, par
     
     Since Inkscape doesn't support proper paragraph spacing, we create copies
     of the text element - one for each paragraph - and translate them vertically.
-    Each text element contains ALL paragraphs, with fill-opacity controlling visibility.
+    Each text element contains ALL paragraphs, with fill-opacity/stroke-opacity controlling visibility.
     Hidden paragraphs act as spacers to push the visible paragraph to the correct position.
     
     Steps:
@@ -668,7 +707,7 @@ def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, par
     2. Count paragraphs
     3. Clone the <text> element N times (N = number of paragraphs)
     4. Translate each copy down by index * paragraph_spacing
-    5. In each copy, set fill-opacity="0" on all paragraphs except the one with matching index
+    5. In each copy, set fill-opacity/stroke-opacity="0" on all paragraphs except the one with matching index
     """
     if element.tag != f"{SVG_NS}text":
         return
@@ -686,6 +725,8 @@ def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, par
         for p_tspan in paragraph_tspans:
             if p_tspan.get("fill-opacity") == "0":
                 del p_tspan.attrib["fill-opacity"]
+            if p_tspan.get("stroke-opacity") == "0":
+                del p_tspan.attrib["stroke-opacity"]
         return
     
     # Serialize original element ONCE before any modifications
@@ -694,11 +735,14 @@ def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, par
     # First, set all paragraphs to hidden in original element
     for p_tspan in paragraph_tspans:
         p_tspan.set("fill-opacity", "0")
+        p_tspan.set("stroke-opacity", "0")
     
     # Make first paragraph visible in original element
     if paragraph_tspans:
         if paragraph_tspans[0].get("fill-opacity") == "0":
             del paragraph_tspans[0].attrib["fill-opacity"]
+        if paragraph_tspans[0].get("stroke-opacity") == "0":
+            del paragraph_tspans[0].attrib["stroke-opacity"]
     
     # Create clones for remaining paragraphs
     for idx in range(1, num_paragraphs):
@@ -716,12 +760,15 @@ def apply_paragraph_spacing(tree: etree.ElementTree, element: etree.Element, par
         cloned_paragraphs = cloned.findall(f"{SVG_NS}tspan[@data-paragraph-index]")
         for p_tspan in cloned_paragraphs:
             p_tspan.set("fill-opacity", "0")
+            p_tspan.set("stroke-opacity", "0")
         
         # Make the paragraph matching this clone's index visible
         for p_tspan in cloned_paragraphs:
             if p_tspan.get("data-paragraph-index") == str(idx):
                 if p_tspan.get("fill-opacity") == "0":
                     del p_tspan.attrib["fill-opacity"]
+                if p_tspan.get("stroke-opacity") == "0":
+                    del p_tspan.attrib["stroke-opacity"]
                 break
         
         parent = element.getparent()
@@ -932,7 +979,7 @@ def render_template(tree: etree.ElementTree, bindings: List[Dict[str, Any]], row
             aggression = binding.get("fit_aggression", 1.0)
             box_width, box_height = get_text_box_dimensions(tree, element)
             if box_width and box_height:
-                computed_font_size = calculate_fitting_font_size(value, box_width, box_height, min_size, max_size, aggression=aggression)
+                computed_font_size = calculate_fitting_font_size(value, box_width, box_height, min_size, max_size, aggression=aggression, small_weight=fit_scale_small)
                 element.set("font-size", str(computed_font_size))
                 # Also update style attribute (takes precedence in SVG)
                 style = element.get("style", "")
