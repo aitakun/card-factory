@@ -67,51 +67,25 @@ def _does_text_fit(
 ) -> bool:
     """Check if text fits within box at given font size.
 
-    Uses character-length mapping with adjustable aggression:
-    - Higher aggression = less shrinking (more text fits at each size)
-    - Lower aggression = more shrinking
+    Uses a linear formula: threshold increases by 100 chars for every 2px decrease in font size.
     
-    Base thresholds (at aggression=1.0):
-    - 32: <= 75 chars
-    - 30: <= 150 chars
-    - 28: <= 250 chars
-    - 26: <= 350 chars
-    - 24: <= 450 chars
-    - 22: <= 550 chars
-    - 20: <= 650 chars
-    - 18: <= 750 chars
-    - 16: <= 850 chars
-    - 14: <= 950 chars
-    - 12: <= 1050 chars
-    - 10: <= 1150 chars
-    - 8: <= 1250 chars
+    At aggression=1.0:
+    - 32px: 75 chars
+    - 30px: 175 chars  
+    - 28px: 275 chars
+    - etc. (100 more chars per 2px step)
     
-    With aggression factor, thresholds scale proportionally.
+    Aggression scales the threshold proportionally.
     """
     text_len = len(text.replace('\n', ''))
     
-    # Map each font size to its base threshold
-    thresholds = {
-        32: 75,
-        30: 150,
-        28: 250,
-        26: 350,
-        24: 450,
-        22: 550,
-        20: 650,
-        18: 750,
-        16: 850,
-        14: 950,
-        12: 1050,
-        10: 1150,
-        8: 1250,
-    }
+    # Base formula: 75 chars at 32px, +100 chars per 2px step down
+    base_threshold = 75 + (32 - font_size) * 50
     
-    if font_size in thresholds:
-        return text_len <= thresholds[font_size] * aggression
+    # Apply aggression (higher = more chars fit = less shrinking)
+    max_chars = base_threshold * aggression
     
-    # Sizes below 8 always fit
-    return True
+    return text_len <= max_chars
 
 
 def get_text_box_dimensions(tree: etree.ElementTree, element: etree.Element) -> Tuple[Optional[float], Optional[float]]:
