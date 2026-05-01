@@ -133,7 +133,7 @@ color_schemes:
       light-color: "#ee7575"
       lighter-color: "#fde1df"
     neutral:
-      primary-color: "#777777"
+      primary-color: "#666666"
       light-color: "#bbbbbb"
       lighter-color: "#eeeeee"
 
