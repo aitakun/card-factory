@@ -32,7 +32,7 @@
      inkscape:window-x="76"
      inkscape:window-y="48"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g370"
      showguides="false"
      showgrid="false"><sodipodi:guide
        position="-226.0248,306.3559"
@@ -582,11 +582,11 @@
          style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:42.6667px;font-family:'Monkirta Pursuit NC';-inkscape-font-specification:'Monkirta Pursuit NC Bold';white-space:pre;shape-inside:url(#rect400);display:inline;fill:#000000;stroke:none;stroke-width:1.45623;stroke-miterlimit:40;stroke-dasharray:none"><tspan
            x="510.23633"
            y="605.44823"
-           id="tspan9"><tspan
+           id="tspan5"><tspan
              style="font-weight:normal;-inkscape-font-specification:'Monkirta Pursuit NC';stroke:#000000"
-             id="tspan1">${type}</tspan><tspan
+             id="tspan3">${type}</tspan><tspan
              style="font-weight:bold"
-             id="tspan2">${subtypes}</tspan></tspan></text><path
+             id="tspan4">${subtypes}</tspan></tspan></text><path
          id="path360"
          style="fill:url(#linearGradient405);fill-opacity:1;stroke:#000000;stroke-width:0.29838;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"
          d="m 231.91197,97.426513 v 4.137737 l 2.9838,0.33796 h 53.70835 l 2.55023,-0.43357 -4.04213,-4.042127 z m -1.4919,5.956747 v 0.0108 h 59.67595 v -0.0108 z"
@@ -615,7 +615,7 @@
          style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:21.3333px;line-height:1.2;font-family:Lato;-inkscape-font-specification:'Lato Heavy';white-space:pre;shape-inside:url(#rect402);display:inline;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:7.55906;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
            x="491.33789"
            y="1039.7793"
-           id="tspan10">Illus. ${illustrator}</tspan></text><g
+           id="tspan6">Illus. ${illustrator}</tspan></text><g
          id="g397"
          transform="matrix(0.14963795,0,0,0.14963795,176.92685,59.891271)"><image
            preserveAspectRatio="none"
@@ -657,10 +657,10 @@
            xml:space="preserve"
            transform="matrix(-0.21518877,0,0,0.21518877,467.79541,-128.87116)"
            id="name"
-           style="font-style:normal;font-variant:small-caps;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect403);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.55744;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
+           style="font-style:normal;font-variant:small-caps;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect403);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.55744;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1;font-variant-ligatures:none"><tspan
              x="491.33789"
              y="684.86424"
-             id="tspan11">Card Name</tspan></text></g><g
+             id="tspan7">Card Name</tspan></text></g><g
          id="g366"
          transform="matrix(-0.25665947,0,0,0.25665947,332.2429,18.820842)"><ellipse
            style="mix-blend-mode:normal;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:5.80161;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter2)"
@@ -741,7 +741,7 @@
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:32px;line-height:1.2;font-family:Lato;-inkscape-font-specification:'Lato Bold';white-space:pre;shape-inside:url(#rect401);display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:7.55906;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
            x="529.13477"
            y="671.47953"
-           id="tspan12">Text</tspan></text><g
+           id="tspan8">Text</tspan></text><g
          id="g23"
          transform="translate(-0.52916667)"><path
            style="mix-blend-mode:normal;fill:#000000;stroke:#000000;stroke-width:0.8;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter24)"

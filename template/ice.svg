@@ -32,7 +32,7 @@
      inkscape:window-x="76"
      inkscape:window-y="48"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1"
+     inkscape:current-layer="g1"
      showguides="false"
      showgrid="false"><sodipodi:guide
        position="-226.0248,306.3559"
@@ -1197,7 +1197,7 @@
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:32px;line-height:1.2;font-family:Lato;-inkscape-font-specification:'Lato Bold';white-space:pre;shape-inside:url(#rect401);display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:7.55906;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
            x="529.13477"
            y="671.47953"
-           id="tspan1">Text</tspan></text><path
+           id="tspan11">Text</tspan></text><path
          id="path360"
          style="fill:url(#primary-color);fill-opacity:1;stroke:#000000;stroke-width:0.29838;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"
          d="m 284.95993,102.343 h 4.35167 l 2.235,-1.70583 V 23.544199 l -2.235,-1.70584 -2.23501,1.70584 v 58.649389 l -2.11666,2.283642 z"
@@ -1210,7 +1210,7 @@
          y="0"><tspan
            x="998.23595"
            y="1039.7793"
-           id="tspan2">Illus. ${illustrator}</tspan></text><g
+           id="tspan12">Illus. ${illustrator}</tspan></text><g
          id="g397"
          transform="matrix(0.14963795,0,0,0.14963795,230.31069,60.949605)"><image
            preserveAspectRatio="none"
@@ -1297,7 +1297,7 @@
              style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect63);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.29914;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
                x="491.33789"
                y="684.86424"
-               id="tspan3">Card Name</tspan></text></g><g
+               id="tspan13">Card Name</tspan></text></g><g
            id="g61"
            transform="matrix(0.29838003,0,0,0.29838003,181.18739,16.431981)"
            style="stroke:url(#primary-color)"><path
@@ -1311,7 +1311,7 @@
              style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect64);display:inline;fill:#000000;fill-opacity:1;stroke:url(#primary-color);stroke-width:1.29914;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
                x="491.33789"
                y="684.86424"
-               id="tspan4">Card Name</tspan></text></g><g
+               id="tspan14">Card Name</tspan></text></g><g
            id="g62"
            transform="matrix(0.29838003,0,0,0.29838003,181.18739,16.256533)"><path
              style="fill:#000000;fill-opacity:1;stroke:url(#light-color);stroke-width:1.5;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"
@@ -1330,11 +1330,11 @@
              y="0"><tspan
                x="1194.6156"
                y="605.44823"
-               id="tspan7"><tspan
+               id="tspan17"><tspan
                  style="font-weight:normal;-inkscape-font-specification:'Monkirta Pursuit NC';stroke:#000000"
-                 id="tspan5">${type}</tspan><tspan
+                 id="tspan15">${type}</tspan><tspan
                  style="font-weight:bold"
-                 id="tspan6">${subtypes}</tspan></tspan></text></g></g><g
+                 id="tspan16">${subtypes}</tspan></tspan></text></g></g><g
          id="g2"
          transform="rotate(-90,233.60785,100.29232)"><ellipse
            style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.448;stroke-linecap:round;stroke-dasharray:none"
@@ -1443,7 +1443,7 @@
              style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect77);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.29914;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
                x="491.33789"
                y="684.86424"
-               id="tspan8">Card Name</tspan></text></g><g
+               id="tspan18">Card Name</tspan></text></g><g
            id="g76"
            transform="matrix(0.29838003,0,0,0.29838003,181.18739,16.431981)"
            style="stroke:url(#primary-color)"><path
@@ -1457,7 +1457,7 @@
              style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect76);display:inline;fill:#000000;fill-opacity:1;stroke:url(#primary-color);stroke-width:1.29914;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
                x="491.33789"
                y="684.86424"
-               id="tspan9">Card Name</tspan></text></g><g
+               id="tspan19">Card Name</tspan></text></g><g
            id="g370"
            transform="matrix(0.29838003,0,0,0.29838003,180.56709,16.256533)"><path
              style="fill:#ffffff;fill-opacity:1;stroke:url(#light-color);stroke-width:1.5;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"
@@ -1467,10 +1467,10 @@
              xml:space="preserve"
              transform="matrix(0.21518877,0,0,0.21518877,115.62219,-128.87116)"
              id="name"
-             style="font-style:normal;font-variant:small-caps;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect403);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.55744;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
+             style="font-style:normal;font-variant:small-caps;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect403);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.55744;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1;font-variant-ligatures:none"><tspan
                x="491.33789"
                y="684.86424"
-               id="tspan10">Card Name</tspan></text></g><rect
+               id="tspan20">Card Name</tspan></text></g><rect
            style="fill:#000000;fill-opacity:1;stroke:none;stroke-width:2.9838;stroke-linecap:square;stroke-miterlimit:40000;stroke-dasharray:none;stroke-opacity:1"
            id="unique-indicator"
            width="0.87351519"
