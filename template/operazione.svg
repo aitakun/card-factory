@@ -24,9 +24,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#505050"
      inkscape:document-units="mm"
-     inkscape:zoom="1.508048"
-     inkscape:cx="-1.6577722"
-     inkscape:cy="126.32224"
+     inkscape:zoom="3.016096"
+     inkscape:cx="23.043033"
+     inkscape:cy="85.375267"
      inkscape:window-width="2484"
      inkscape:window-height="1355"
      inkscape:window-x="76"
@@ -319,7 +319,7 @@
          style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:32px;line-height:1.2;font-family:Lato;-inkscape-font-specification:'Lato Bold';white-space:pre;shape-inside:url(#rect401);display:inline;fill:#000000;fill-opacity:1;stroke:none;stroke-width:7.55906;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
            x="529.13477"
            y="671.47953"
-           id="tspan3">Text</tspan></text><path
+           id="tspan1">Text</tspan></text><path
          id="path360"
          style="fill:url(#linearGradient405);fill-opacity:1;stroke:#000000;stroke-width:0.29838;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"
          d="m 231.91197,97.426513 v 4.137737 l 2.9838,0.33796 h 37.83335 l 3.0794,0.0956 -4.5713,-4.571297 z m -1.4919,5.956747 v 0.0108 h 59.67595 v -0.0108 z"
@@ -330,7 +330,7 @@
          style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:21.3333px;line-height:1.2;font-family:Lato;-inkscape-font-specification:'Lato Heavy';white-space:pre;shape-inside:url(#rect402);display:inline;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:7.55906;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
            x="491.33789"
            y="1039.7793"
-           id="tspan4">Illus. ${illustrator}</tspan></text><g
+           id="tspan2">Illus. ${illustrator}</tspan></text><g
          id="g397"
          transform="matrix(0.14963795,0,0,0.14963795,177.32444,59.891271)"><image
            preserveAspectRatio="none"
@@ -426,7 +426,7 @@
            style="font-style:normal;font-variant:small-caps;font-weight:normal;font-stretch:normal;font-size:49.4486px;font-family:Cardo;-inkscape-font-specification:Cardo;letter-spacing:0px;white-space:pre;shape-inside:url(#rect403);display:inline;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:1.55744;stroke-linejoin:round;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"><tspan
              x="491.33789"
              y="684.86424"
-             id="tspan5">Card Name</tspan></text></g><g
+             id="tspan3">Card Name</tspan></text></g><g
          id="g366"
          transform="matrix(0.25665947,0,0,0.25665947,191.42089,19.350009)"><ellipse
            style="mix-blend-mode:normal;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:5;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter2)"
@@ -453,7 +453,7 @@
              y="22.668184">10</tspan></text><path
            id="path363"
            d="m 195.42598,10.172761 3.67866,3.057102 v 5.540286 l -3.67866,3.05709 -3.67867,-3.05709 v -5.540286 z m -2.60748,8.234252 2.60748,2.166907 v -4.544652 l 2.60747,-2.166918 v -0.269399 l -2.60747,-2.166912 -2.60748,2.166912 z"
-           style="opacity:0.4;mix-blend-mode:normal;fill:#ffffff;fill-opacity:1;stroke-width:0.192952" /><path
+           style="opacity:0.5;mix-blend-mode:normal;fill:#ffffff;fill-opacity:1;stroke-width:0.192952" /><path
            style="opacity:0.3;fill:none;fill-opacity:1;stroke:#ffffff;stroke-width:1.09262;stroke-miterlimit:40;stroke-dasharray:none;stroke-opacity:1"
            id="path364"
            sodipodi:type="arc"
@@ -520,11 +520,11 @@
          style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:42.6667px;font-family:'Monkirta Pursuit NC';-inkscape-font-specification:'Monkirta Pursuit NC Bold';white-space:pre;shape-inside:url(#rect400);display:inline;fill:#000000;stroke:none;stroke-width:1.45623;stroke-miterlimit:40;stroke-dasharray:none"><tspan
            x="510.23633"
            y="605.44823"
-           id="tspan11"><tspan
+           id="tspan7"><tspan
              style="font-weight:normal;-inkscape-font-specification:'Monkirta Pursuit NC';stroke:#000000"
-             id="tspan6">${type}</tspan><tspan
+             id="tspan4">${type}</tspan><tspan
              style="font-weight:bold"
-             id="tspan10">${subtypes}</tspan></tspan></text><path
+             id="tspan5">${subtypes}</tspan></tspan></text><path
          style="opacity:1;fill:url(#primary-color);stroke:url(#primary-color);stroke-width:0.349999"
          d="m 237.95418,33.0598 0.57021,-0.789514 c 6.22839,-0.745652 8.37762,-4.566501 9.60575,-5.70691 l -2.98261,3.338368 -4.38619,2.587851 z"
          id="path13"
