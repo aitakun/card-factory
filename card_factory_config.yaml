@@ -128,10 +128,18 @@ color_schemes:
       primary-color: "#194c9b"
       light-color: "#75cbff"
       lighter-color: "#d5f1fd"
+    anarch:
+      primary-color: "#973a1c"
+      light-color: "#f8935a"
+      lighter-color: "#f9dfcc"
     jinteki:
       primary-color: "#8d0b1f"
       light-color: "#ee7575"
       lighter-color: "#fde1df"
+    weyland:
+      primary-color: "#334e3b"
+      light-color: "#597860"
+      lighter-color: "#dae0d8"
     neutral:
       primary-color: "#666666"
       light-color: "#bbbbbb"
@@ -148,6 +156,7 @@ substitutions:
   "[mu]": ""
   "[recurring credit]": ""
   "[subroutine]": ""
+  "[trash]": ""
 
 # Output settings
 output:
