@@ -1,0 +1,24 @@
+side,turn,step,action_type,card,server,credits_player,credits_details,details,teaching_moment
+Corp,1,1,draw,Hedge Fund,,,,"Mandatory draw at start of turn",
+Corp,1,2,install,Superconducting Hub,remote,,,"Install face down in new remote server",
+Corp,1,3,advance,Superconducting Hub,remote,-1cr,,Spend 1cr to place 1 advancement token; ID triggers: +2cr,
+Corp,1,4,install,Palisade,remote (protecting),,,"Install face down as outer ice on remote server",
+Runner,1,1,play event,Sure Gamble,,-5cr +9cr,,"Pay 5cr, gain 9cr (net +4cr)",
+Runner,1,2,play event,Jailbreak,R&D,,,"Successful run on R&D. Draw 1 (Ritual). Access 2 cards. Access #1: steal Above the Law (agenda). Access #2: see Tithe, leave on top. ID: +2cr.",
+Runner,1,3,run,,"remote",,,Runner approaches Palisade. Corp rezzes (3cr). No breaker → subs fire → ""End the run"". Run ends.,
+Runner,1,4,draw,Red Team,,,,"Draw 1 card",
+Corp,2,1,draw,Tithe,,,,"Mandatory draw",
+Corp,2,2,advance,Superconducting Hub,remote,-1cr,,Hub → 2 tokens,
+Corp,2,3,advance + score,Superconducting Hub,remote,-1cr,,Advance to 3 tokens → score agenda. On score: draw 2 (Offworld Office, Kessleroid). Max hand size → 7.,
+Corp,2,4,install,Tithe,R&D (protecting),,,"Install face down on R&D",
+Runner,2,1,install,Red Team,,,,"Pay 5cr. Place 12cr from pool onto Red Team.",
+Runner,2,2,action (Red Team),,R&D,,,"Run on R&D. Corp rezzes Tithe (1cr). Can't break → subs: 1 net damage, Corp +1cr. Pass ice. Run successful. Red Team: +3cr from stored credits. Access Syailendra, leave on top. ID: +1cr.",explain damage & flatlining
+Runner,2,3,install,Verbal Plasticity,,-3cr,,Pay 3cr,
+Runner,2,4,draw,,,,"Verbal Plasticity: draw 2 instead → Side Hustle, Rising Tide","Replacement effect: draw 2 cards instead of 1"
+Corp,3,1,draw,Syailendra,,,,"Mandatory draw",
+Corp,3,2,play operation,Predictive Planogram,,+3cr,,Gain 3cr,explain tags not relevant in teaching game
+Corp,3,3,install,Regolith Mining License,remote,,,"Install face down behind rezzed Palisade",
+Corp,3,4,rez + action,Regolith Mining License,remote,-2cr +3cr,,"Rez for 2cr (on rez: add 15cr onto card). Take 3cr from Regolith's stored credits.",explain rezzing & timing
+Runner,3,1,action (Red Team),,HQ,,,"Run on HQ (no ice). Successful. Red Team: +3cr. Access 1 random card. ID: +1cr.",
+Runner,3,2,install,Rising Tide,,-1cr,,Pay 1cr,
+Runner,3,3,run,,remote,,,"Encounter Palisade. Use Rising Tide: pay 3cr for +3 strength, 1cr to break barrier sub → all subs broken. Access Regolith, pay 3cr to trash.",explain icebreakers: strength, interface, breaking subs; explain trashing & trash cost
